@@ -34,6 +34,28 @@ main  ────────────────────────�
 
 ---
 
+## Estrutura de Pacotes
+
+Organização por domínio. Cada módulo contém: `entity`, `repository`, `service`, `dto`, `controller`.
+
+```
+com.souzs.back
+├── domain
+│   ├── auth          → User, Role, Authority
+│   ├── customer      → Customer, Address
+│   ├── catalog       → Category, Product
+│   ├── stock         → Stock, StockCount
+│   └── commerce      → Order, OrderItem, Payment, Delivery
+└── infrastructure
+    ├── security      → filters, handlers, configuração Spring Security
+    ├── config        → beans globais
+    └── exception     → handlers e exceptions customizadas
+```
+
+> Domínios isolados facilitam a evolução para monolito modular (`feature/auth-server`) e eventual extração de serviços.
+
+---
+
 ## Domínio — Entidades
 
 ### Diagrama de Entidades
