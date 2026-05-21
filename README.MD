@@ -320,11 +320,161 @@ REGULAR   DIVERGENT
 
 ## Branches — System Design
 
-> Em construção. Cada branch terá seu design detalhado aqui e um arquivo dedicado em `/docs`.
-
 | Branch | Doc |
 |---|---|
 | `feature/refresh-token` | [docs/feature-refresh-token.md](docs/feature-refresh-token.md) |
 | `feature/auth-server` | [docs/feature-auth-server.md](docs/feature-auth-server.md) |
 | `feature/gateway` | [docs/feature-gateway.md](docs/feature-gateway.md) |
 | `feature/oauth2-keycloak` | [docs/feature-oauth2-keycloak.md](docs/feature-oauth2-keycloak.md) |
+
+---
+
+## feature/refresh-token
+
+Sessão com dois tokens: **Access Token (AT)** JWT HS256 de curta duração (15min) + **Refresh Token (RT)** opaco de longa duração (7 dias) com rotação e persistência em banco.
+
+> HS256 nesta branch — RS256 entra em `feature/auth-server`, onde distribuição de chave pública faz sentido real.
+
+### Nova entidade — `RefreshToken`
+
+```
+refresh_tokens
+├── id           BIGSERIAL PK
+├── token_hash   VARCHAR(64) UNIQUE NOT NULL   -- SHA-256 hex do token raw
+├── user_id      FK → users
+├── family       UUID NOT NULL                 -- rastreamento de família para reuse detection
+├── used         BOOLEAN DEFAULT false
+├── revoked      BOOLEAN DEFAULT false
+├── expires_at   TIMESTAMPTZ NOT NULL
+└── created_at   TIMESTAMPTZ NOT NULL
+```
+
+O campo `family` rastreia a corrente de rotação. Se um token já marcado como `used` for apresentado, a família inteira é revogada — força re-login e mitiga theft silencioso.
+
+### Novos pacotes
+
+```
+domain/auth
+├── entity/RefreshToken.java
+├── repository/RefreshTokenRepository.java
+├── service/AuthService.java          -- register, login, refresh, logout
+├── service/TokenService.java         -- gera/valida JWT, gera/hasha RT
+├── dto/RegisterRequest.java
+├── dto/LoginRequest.java
+├── dto/AuthResponse.java
+└── controller/AuthController.java
+
+infrastructure/security
+├── JwtAuthenticationFilter.java      -- OncePerRequestFilter
+├── JwtProperties.java                -- @ConfigurationProperties("jwt")
+└── SecurityConfig.java               -- atualizado (proteção real)
+```
+
+Nova dependência: `jjwt-api` / `jjwt-impl` / `jjwt-jackson` (`0.12.6`).
+
+### Endpoints
+
+| Método | Path | Proteção |
+|---|---|---|
+| `POST` | `/auth/register` | público |
+| `POST` | `/auth/login` | público |
+| `POST` | `/auth/refresh` | público (cookie RT) |
+| `POST` | `/auth/logout` | `authenticated` |
+| `GET` | `/auth/me` | `authenticated` |
+| `GET` | `/products` | `product:read` |
+| `POST` | `/products` | `product:write` |
+| `DELETE` | `/products/{id}` | `product:delete` |
+
+Endpoints de produto demonstram autorização granular — sem lógica de negócio.
+
+### Fluxos
+
+#### Register
+```
+POST /auth/register  { email, password, name }
+  → validar unicidade do email
+  → BCrypt(password, fator=12)
+  → criar User com role CUSTOMER
+  ← 201 { id, email, name, createdAt }
+```
+
+Sem auto-login — separação explícita obriga o cliente a entender o fluxo.
+
+#### Login
+```
+POST /auth/login  { email, password }
+  → load User by email           (401 genérico — anti-enumeration)
+  → BCrypt.matches               (tempo constante)
+  → checar enabled/locked
+  → gerar AT: JWT HS256, 15min
+      claims: sub=userId, email, roles[], authorities[], iat, exp
+  → gerar RT: UUID.randomUUID()
+  → hash RT: SHA-256
+  → persistir RefreshToken(hash, userId, family=new UUID, used=false, expiresAt=now+7d)
+  ← 200 { accessToken, user: { id, email, name, roles } }
+      Set-Cookie: refreshToken=<raw>; HttpOnly; Secure; SameSite=Strict;
+                  Path=/auth/refresh; Max-Age=604800
+```
+
+#### Refresh
+```
+POST /auth/refresh  (cookie: refreshToken=<raw>)
+  → hash incoming RT
+  → buscar por tokenHash no banco
+  → se não encontrado         → 401
+  → se revoked=true           → 401
+  → se expirado               → 401
+  → se used=true              → revogar família inteira → log security event → 401
+  → marcar old RT como used=true
+  → gerar novo AT
+  → gerar novo RT (mesma family)
+  → persistir novo RefreshToken
+  ← 200 { accessToken }
+      Set-Cookie: refreshToken=<new raw>; (mesmas flags)
+```
+
+#### Logout
+```
+POST /auth/logout  (Bearer AT + cookie RT)
+  → hash incoming RT
+  → buscar por tokenHash
+  → marcar revoked=true
+  → limpar cookie (Max-Age=0)
+  ← 204 No Content
+```
+
+### Diagrama — Rotação e Reuse Detection
+
+```
+Cliente         Back-end              Banco
+  │                  │                   │
+  │── POST /login ──▶│                   │
+  │                  │── INSERT RT₁ ─────▶│
+  │◀── AT + RT₁(cookie)                  │
+  │                  │                   │
+  │── POST /refresh ▶│                   │
+  │   cookie: RT₁    │── SELECT RT₁ ────▶│
+  │                  │── UPDATE used=true ▶│
+  │                  │── INSERT RT₂ ─────▶│
+  │◀── AT₂ + RT₂(cookie)                 │
+  │                  │                   │
+  │  (atacante usa RT₁ roubado)          │
+  │── POST /refresh ▶│                   │
+  │   cookie: RT₁    │── SELECT RT₁ ────▶│
+  │                  │◀── used=TRUE ──────│
+  │                  │── REVOKE family ──▶│  ← família inteira revogada
+  │◀── 401 ──────────│                   │
+  │   (usuário legítimo também recebe 401 → re-login forçado)
+```
+
+### Decisões de segurança
+
+| Decisão | Razão |
+|---|---|
+| RT opaco hasheado (SHA-256) | Vazamento de BD não expõe tokens ativos |
+| RT em cookie HttpOnly | XSS não acessa o token |
+| `Path=/auth/refresh` no cookie | Cookie não trafega em toda request |
+| `SameSite=Strict` | CSRF: browser não envia cookie cross-origin |
+| AT stateless (sem DB call no filter) | Performance; janela 15min aceitável sem blacklist |
+| Generic 401 em falha de login | Previne enumeration de emails |
+| Reuse detection via family | Theft detectável mesmo retroativamente |
