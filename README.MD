@@ -41,7 +41,7 @@ Organização por domínio. Cada módulo contém: `entity`, `repository`, `servi
 ```
 com.souzs.back
 ├── domain
-│   ├── auth          → User, Role, Authority
+│   ├── auth          → User, Role, Authority + UserManagement (service/controller/dto)
 │   ├── customer      → Customer, Address
 │   ├── catalog       → Category, Product
 │   ├── stock         → Stock, StockCount
@@ -148,6 +148,57 @@ com.souzs.back
 | `OrderItem` | Item de um pedido |
 | `Payment` | Pagamento do pedido *(mocked)* |
 | `Delivery` | Entrega do pedido *(mocked)* |
+
+---
+
+## Endpoints — `main`
+
+> `main` libera todos os endpoints sem autenticação. Feature branches adicionam `@PreAuthorize` e filtros JWT.
+
+### User Management (`/users`)
+
+| Método | Endpoint | Descrição | Status |
+|---|---|---|---|
+| `GET` | `/users` | Lista paginada de usuários (`page`, `size`, `sort`) | 200 |
+| `GET` | `/users/{id}` | Detalhe do usuário | 200 |
+| `PUT` | `/users/{id}/roles` | Substitui o conjunto de roles do usuário | 200 |
+| `PATCH` | `/users/{id}/status` | Atualiza `enabled` e/ou `locked` (campos opcionais) | 200 |
+| `DELETE` | `/users/{id}` | Soft delete — seta `enabled = false` | 204 |
+
+**`PUT /users/{id}/roles` — body:**
+```json
+{ "roleNames": ["ADMIN", "MANAGER"] }
+```
+
+**`PATCH /users/{id}/status` — body (campos opcionais):**
+```json
+{ "enabled": false, "locked": true }
+```
+
+**Response padrão (`UserSummaryResponse`):**
+```json
+{
+  "id": 1,
+  "email": "admin@example.com",
+  "name": "Admin",
+  "enabled": true,
+  "locked": false,
+  "createdAt": "2026-05-21T00:00:00Z",
+  "roles": ["ADMIN"],
+  "authorities": ["user:read", "user:write", "product:read", "..."]
+}
+```
+
+> Authorities retornadas são o flatten de todas as authorities das roles do usuário.
+
+### Outros domínios
+
+| Prefixo | Domínio |
+|---|---|
+| `/categories`, `/products` | Catalog |
+| `/customers`, `/customers/{id}/addresses` | Customer |
+| `/stocks`, `/stocks/{id}/counts` | Stock |
+| `/orders`, `/orders/{id}/payment`, `/orders/{id}/delivery` | Commerce |
 
 ---
 
