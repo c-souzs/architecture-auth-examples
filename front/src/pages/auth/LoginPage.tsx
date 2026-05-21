@@ -1,8 +1,38 @@
+import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import axios from 'axios'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { Link } from 'react-router-dom'
+import { useAuth } from '@/contexts/AuthContext'
+import type { ErrorResponse } from '@/models/error'
 
 export function LoginPage() {
+  const { login, isAuthenticated } = useAuth()
+  const navigate = useNavigate()
+
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (isAuthenticated) navigate('/users', { replace: true })
+  }, [isAuthenticated, navigate])
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    try {
+      await login({ email, password })
+      navigate('/users', { replace: true })
+    } catch (err) {
+      setError(extractMessage(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-md bg-white rounded-2xl shadow p-8 flex flex-col gap-6">
@@ -11,13 +41,16 @@ export function LoginPage() {
           <p className="text-sm text-gray-500 mt-1">Acesse sua conta</p>
         </div>
 
-        <form className="flex flex-col gap-4">
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           <Input
             id="email"
             label="E-mail"
             type="email"
             placeholder="seu@email.com"
             autoComplete="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            required
           />
           <Input
             id="password"
@@ -25,9 +58,17 @@ export function LoginPage() {
             type="password"
             placeholder="••••••••"
             autoComplete="current-password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            required
           />
-          <Button type="submit" fullWidth>
-            Entrar
+
+          {error && (
+            <p className="text-sm text-red-600 text-center">{error}</p>
+          )}
+
+          <Button type="submit" fullWidth disabled={loading}>
+            {loading ? 'Entrando...' : 'Entrar'}
           </Button>
         </form>
 
@@ -40,4 +81,11 @@ export function LoginPage() {
       </div>
     </div>
   )
+}
+
+function extractMessage(err: unknown): string {
+  if (axios.isAxiosError(err) && err.response?.data) {
+    return (err.response.data as ErrorResponse).message ?? 'Erro desconhecido'
+  }
+  return 'Erro de conexão. Tente novamente.'
 }
