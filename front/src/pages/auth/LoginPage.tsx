@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -9,6 +9,8 @@ import type { ErrorResponse } from '@/models/error'
 export function LoginPage() {
   const { login, isAuthenticated } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? '/users'
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -16,8 +18,8 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (isAuthenticated) navigate('/users', { replace: true })
-  }, [isAuthenticated, navigate])
+    if (isAuthenticated) navigate(from, { replace: true })
+  }, [isAuthenticated, navigate, from])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -25,7 +27,7 @@ export function LoginPage() {
     setLoading(true)
     try {
       await login({ email, password })
-      navigate('/users', { replace: true })
+      navigate(from, { replace: true })
     } catch (err) {
       setError(extractMessage(err))
     } finally {
