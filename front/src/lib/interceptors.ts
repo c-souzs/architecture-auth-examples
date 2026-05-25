@@ -1,10 +1,23 @@
 import api from '@/lib/api'
 import { authService } from '@/services/authService'
 
-// Variavel que controla o accessToken
 let _accessToken: string | null = null
 
-// Controla a variavel do modulo 
+// Promise compartilhada para a restauração inicial de sessao, como se fosse um state
+// Corrige problema do Strice Mode atrapalhando a rotacao do token (Redis no back trataria melhor)
+let _restorePromise: Promise<{ accessToken: string }> | null = null
+
+export function restoreSession(): Promise<{ accessToken: string }> {
+  // Nao existe uma Promise que restaura a Sesshion? Cria
+  if (!_restorePromise) {
+    _restorePromise = authService.refresh()
+      .finally(() => { _restorePromise = null })
+  }
+
+  // Se existe, retorna ela.
+  return _restorePromise
+}
+
 export const getAccessToken = () => _accessToken
 export const updateAccessToken = (token: string | null) => { _accessToken = token }
 

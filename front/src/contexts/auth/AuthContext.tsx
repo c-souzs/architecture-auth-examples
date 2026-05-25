@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { authService } from '@/services/authService'
-import { setupInterceptors, updateAccessToken } from '@/lib/interceptors'
+import { setupInterceptors, updateAccessToken, restoreSession } from '@/lib/interceptors'
 import { AuthContext } from '@/contexts/auth/authContext'
 import type { UserInfo } from '@/models/auth'
 
@@ -29,7 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     // Restaura AT primeiro
-    authService.refresh()
+    restoreSession()
       .then(data => {
         setToken(data.accessToken)
         return authService.me() // Se sucesso, busca os dados do usuario autenticado
