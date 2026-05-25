@@ -4,30 +4,32 @@ import axios from 'axios'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useAuth } from '@/hooks/useAuth'
+import { resolveRedirect } from '@/router/routeConfig'
 import type { ErrorResponse } from '@/models/error'
 
 export function LoginPage() {
-  const { login, isAuthenticated } = useAuth()
+  const { login, isAuthenticated, user } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const from = searchParams.get('from') ?? '/users'
+  const from = searchParams.get('from') ?? '/'
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // Sessão restaurada (page reload com RT válido) — redireciona para rota acessível
   useEffect(() => {
-    if (isAuthenticated) navigate(from, { replace: true })
-  }, [isAuthenticated, navigate, from])
+    if (isAuthenticated && user) navigate(resolveRedirect(from, user), { replace: true })
+  }, [isAuthenticated, user, navigate, from])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     setLoading(true)
     try {
-      await login({ email, password })
-      navigate(from, { replace: true })
+      const loggedUser = await login({ email, password })
+      navigate(resolveRedirect(from, loggedUser), { replace: true })
     } catch (err) {
       setError(extractMessage(err))
     } finally {

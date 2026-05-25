@@ -46,12 +46,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const data = await authService.login(body)
     setToken(data.accessToken)
     setUser(data.user)
+    return data.user
   }
 
   async function register(body: { name: string; email: string; password: string }) {
     const data = await authService.register(body)
     setToken(data.accessToken)
     setUser(data.user)
+    return data.user
   }
 
   async function logout() {

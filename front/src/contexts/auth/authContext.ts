@@ -7,8 +7,8 @@ export interface AuthContextValue {
   isAuthenticated: boolean
   initializing: boolean
   isLoggingOut: boolean
-  login: (body: { email: string; password: string }) => Promise<void>
-  register: (body: { name: string; email: string; password: string }) => Promise<void>
+  login: (body: { email: string; password: string }) => Promise<UserInfo>
+  register: (body: { name: string; email: string; password: string }) => Promise<UserInfo>
   logout: () => Promise<void>
   setAccessToken: (token: string) => void
 }

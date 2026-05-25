@@ -1,17 +1,15 @@
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
-
-const navItems = [
-  { to: '/users', label: 'Usuários' },
-  { to: '/categories', label: 'Categorias' },
-  { to: '/products', label: 'Produtos' },
-  { to: '/customers', label: 'Clientes' },
-  { to: '/stock', label: 'Estoque' },
-  { to: '/orders', label: 'Pedidos' },
-]
+import { usePermissions } from '@/hooks/usePermissions'
+import { appRoutes } from '@/router/routeConfig'
 
 export function Sidebar() {
   const { logout } = useAuth()
+  const { canAccess } = usePermissions()
+
+  const visibleRoutes = appRoutes.filter(route =>
+    !route.permission || canAccess(route.permission)
+  )
 
   return (
     <aside className="w-56 min-h-screen bg-gray-900 flex flex-col">
@@ -19,10 +17,10 @@ export function Sidebar() {
         <span className="text-white font-semibold text-sm tracking-wide">Auth Examples</span>
       </div>
       <nav className="flex flex-col gap-0.5 px-2 py-3 flex-1">
-        {navItems.map(item => (
+        {visibleRoutes.map(route => (
           <NavLink
-            key={item.to}
-            to={item.to}
+            key={route.path}
+            to={route.path}
             className={({ isActive }) =>
               `flex items-center px-3 py-2 rounded-lg text-sm transition-colors ${
                 isActive
@@ -31,7 +29,7 @@ export function Sidebar() {
               }`
             }
           >
-            {item.label}
+            {route.label}
           </NavLink>
         ))}
       </nav>
