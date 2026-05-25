@@ -7,6 +7,7 @@ import com.souzs.back.architecture_auth_examples_back.domain.stock.entity.StockS
 import com.souzs.back.architecture_auth_examples_back.domain.stock.service.StockService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,26 +20,31 @@ public class StockController {
     private final StockService stockService;
 
     @GetMapping
+    @PreAuthorize("hasAuthority('stock:read')")
     public List<StockResponse> findAll(@RequestParam(required = false) StockStatus status) {
         return stockService.findAll(status);
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('stock:read')")
     public StockResponse findById(@PathVariable Long id) {
         return stockService.findById(id);
     }
 
     @GetMapping("/product/{productId}")
+    @PreAuthorize("hasAuthority('stock:read')")
     public StockResponse findByProductId(@PathVariable Long productId) {
         return stockService.findByProductId(productId);
     }
 
     @PutMapping("/{id}/adjust")
+    @PreAuthorize("hasAuthority('stock:write')")
     public StockResponse adjust(@PathVariable Long id, @Valid @RequestBody StockAdjustRequest request) {
         return stockService.adjust(id, request);
     }
 
     @PutMapping("/{id}/validate")
+    @PreAuthorize("hasAuthority('stock:validate')")
     public StockResponse validate(@PathVariable Long id, @Valid @RequestBody StockValidateRequest request) {
         return stockService.validate(id, request);
     }

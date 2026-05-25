@@ -5,6 +5,7 @@ import com.souzs.back.architecture_auth_examples_back.domain.commerce.dto.Delive
 import com.souzs.back.architecture_auth_examples_back.domain.commerce.service.DeliveryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -15,11 +16,13 @@ public class DeliveryController {
     private final DeliveryService deliveryService;
 
     @GetMapping
+    @PreAuthorize("hasAuthority('delivery:read')")
     public DeliveryResponse findByOrderId(@PathVariable Long orderId) {
         return deliveryService.findByOrderId(orderId);
     }
 
     @PostMapping("/ship")
+    @PreAuthorize("hasAuthority('delivery:manage')")
     public DeliveryResponse ship(
             @PathVariable Long orderId,
             @Valid @RequestBody DeliveryShipRequest request) {
@@ -27,6 +30,7 @@ public class DeliveryController {
     }
 
     @PostMapping("/deliver")
+    @PreAuthorize("hasAuthority('delivery:manage')")
     public DeliveryResponse deliver(@PathVariable Long orderId) {
         return deliveryService.deliver(orderId);
     }
