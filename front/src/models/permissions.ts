@@ -16,6 +16,7 @@ export const Authority = {
   PRODUCT_READ: 'product:read',
   PRODUCT_WRITE: 'product:write',
   PRODUCT_DELETE: 'product:delete',
+  PRODUCT_CATALOG: 'product:catalog',
 
   CATEGORY_READ: 'category:read',
   CATEGORY_WRITE: 'category:write',
@@ -25,6 +26,7 @@ export const Authority = {
   ORDER_WRITE: 'order:write',
   ORDER_CANCEL: 'order:cancel',
   ORDER_MANAGE: 'order:manage',
+  ORDER_OWN: 'order:own',
 
   PAYMENT_READ: 'payment:read',
   PAYMENT_MANAGE: 'payment:manage',

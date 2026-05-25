@@ -11,10 +11,10 @@ export interface RouteConfig {
 export const appRoutes: RouteConfig[] = [
   { path: '/users',      label: 'Usuários',   permission: { authorities: [Authority.USER_READ] } },
   { path: '/categories', label: 'Categorias', permission: { authorities: [Authority.CATEGORY_READ] } },
-  { path: '/products',   label: 'Produtos',   permission: { authorities: [Authority.PRODUCT_READ] } },
+  { path: '/products',   label: 'Produtos',   permission: { authorities: [Authority.PRODUCT_READ, Authority.PRODUCT_CATALOG] } },
   { path: '/customers',  label: 'Clientes',   permission: { authorities: [Authority.CUSTOMER_READ] } },
   { path: '/stock',      label: 'Estoque',    permission: { authorities: [Authority.STOCK_READ] } },
-  { path: '/orders',     label: 'Pedidos',    permission: { authorities: [Authority.ORDER_READ] } },
+  { path: '/orders',     label: 'Pedidos',    permission: { authorities: [Authority.ORDER_READ, Authority.ORDER_OWN] } },
 ]
 
 function userCanAccess(user: UserInfo, permission?: PermissionRequirement): boolean {

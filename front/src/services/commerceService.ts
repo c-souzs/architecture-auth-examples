@@ -11,6 +11,15 @@ export const commerceService = {
   createOrder: (body: { customerId: number; deliveryAddressId: number; items: { productId: number; quantity: number }[] }) =>
     api.post<Order>('/orders', body).then(r => r.data),
 
+  findMyOrders: (params?: { status?: OrderStatus }) =>
+    api.get<Order[]>('/orders/my', { params }).then(r => r.data),
+
+  createMyOrder: (body: { deliveryAddressId: number; items: { productId: number; quantity: number }[] }) =>
+    api.post<Order>('/orders/my', body).then(r => r.data),
+
+  cancelMyOrder: (id: number) =>
+    api.post<Order>(`/orders/my/${id}/cancel`).then(r => r.data),
+
   cancelOrder: (id: number) =>
     api.post<Order>(`/orders/${id}/cancel`).then(r => r.data),
 

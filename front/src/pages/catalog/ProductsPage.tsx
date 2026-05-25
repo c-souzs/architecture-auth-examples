@@ -10,7 +10,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { catalogService } from '@/services/catalogService'
 import { AccessGuard } from '@/components/layout/AccessGuard'
 import { Authority } from '@/models/permissions'
-import type { Category, Product, ProductStatus } from '@/models/catalog'
+import type { Category, Product, ProductCatalog, ProductStatus } from '@/models/catalog'
 
 const STATUS_OPTIONS = [
   { value: 'ACTIVE', label: 'Ativo' },
@@ -19,7 +19,7 @@ const STATUS_OPTIONS = [
 ]
 
 export function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>([])
+  const [products, setProducts] = useState<ProductCatalog[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [filterCategory, setFilterCategory] = useState('')
@@ -30,20 +30,32 @@ export function ProductsPage() {
 
   const { form, errors, setField, validate, toRequest, reset } = useProductForm()
   const { canAccess } = usePermissions()
+  const isCatalog = canAccess({ authorities: [Authority.PRODUCT_CATALOG] }) && !canAccess({ authorities: [Authority.PRODUCT_READ] })
   const canWrite = canAccess({ authorities: [Authority.PRODUCT_WRITE] })
   const canDelete = canAccess({ authorities: [Authority.PRODUCT_DELETE] })
 
   useEffect(() => {
-    catalogService.findAllCategories().then(setCategories)
-  }, [])
+    if (!isCatalog) {
+      catalogService.findAllCategories().then(setCategories)
+    }
+  }, [isCatalog])
 
   useEffect(() => {
-    const params = {
-      categoryId: filterCategory ? Number(filterCategory) : undefined,
-      status: filterStatus as ProductStatus || undefined,
+    setLoading(true)
+    if (isCatalog) {
+      catalogService.findCatalogProducts()
+        .then(setProducts)
+        .finally(() => setLoading(false))
+    } else {
+      const params = {
+        categoryId: filterCategory ? Number(filterCategory) : undefined,
+        status: filterStatus as ProductStatus || undefined,
+      }
+      catalogService.findAllProducts(params)
+        .then(setProducts)
+        .finally(() => setLoading(false))
     }
-    catalogService.findAllProducts(params).then(setProducts).finally(() => setLoading(false))
-  }, [filterCategory, filterStatus])
+  }, [isCatalog, filterCategory, filterStatus])
 
   function openCreate() {
     reset()
@@ -81,7 +93,7 @@ export function ProductsPage() {
     }
   }
 
-  async function handleDelete(p: Product) {
+  async function handleDelete(p: ProductCatalog) {
     if (!confirm(`Excluir "${p.name}"?`)) return
     await catalogService.deleteProduct(p.id)
     setProducts(prev => prev.filter(x => x.id !== p.id))
@@ -89,18 +101,24 @@ export function ProductsPage() {
 
   const categoryOptions = categories.map(c => ({ value: String(c.id), label: c.name }))
 
-  const columns: Column<Product>[] = [
+  const columns: Column<ProductCatalog>[] = [
     { header: 'Nome', render: p => p.name },
     { header: 'Categoria', render: p => p.categoryName },
     { header: 'Preço', render: p => `R$ ${Number(p.price).toFixed(2)}` },
-    { header: 'Status', render: p => <Badge label={p.status} variant={statusVariant(p.status)} /> },
+    ...(!isCatalog ? [{
+      header: 'Status',
+      render: (p: ProductCatalog) => {
+        const status = (p as Product).status
+        return <Badge label={status} variant={statusVariant(status)} />
+      },
+    }] : []),
     ...(canWrite || canDelete ? [{
       header: 'Ações',
       width: '120px',
-      render: (p: Product) => (
+      render: (p: ProductCatalog) => (
         <div className="flex gap-2">
           <AccessGuard authorities={[Authority.PRODUCT_WRITE]} fallback={null}>
-            <Button variant="secondary" onClick={() => openEdit(p)} className="text-xs px-2 py-1">Editar</Button>
+            <Button variant="secondary" onClick={() => openEdit(p as Product)} className="text-xs px-2 py-1">Editar</Button>
           </AccessGuard>
           <AccessGuard authorities={[Authority.PRODUCT_DELETE]} fallback={null}>
             <Button variant="danger" onClick={() => handleDelete(p)} className="text-xs px-2 py-1">Excluir</Button>
@@ -120,24 +138,26 @@ export function ProductsPage() {
           </AccessGuard>
         </div>
 
-        <div className="flex gap-3">
-          <Select
-            id="filterCategory"
-            placeholder="Todas as categorias"
-            options={categoryOptions}
-            value={filterCategory}
-            onChange={e => { setLoading(true); setFilterCategory(e.target.value) }}
-            className="w-48"
-          />
-          <Select
-            id="filterStatus"
-            placeholder="Todos os status"
-            options={STATUS_OPTIONS}
-            value={filterStatus}
-            onChange={e => { setLoading(true); setFilterStatus(e.target.value) }}
-            className="w-44"
-          />
-        </div>
+        {!isCatalog && (
+          <div className="flex gap-3">
+            <Select
+              id="filterCategory"
+              placeholder="Todas as categorias"
+              options={categoryOptions}
+              value={filterCategory}
+              onChange={e => { setLoading(true); setFilterCategory(e.target.value) }}
+              className="w-48"
+            />
+            <Select
+              id="filterStatus"
+              placeholder="Todos os status"
+              options={STATUS_OPTIONS}
+              value={filterStatus}
+              onChange={e => { setLoading(true); setFilterStatus(e.target.value) }}
+              className="w-44"
+            />
+          </div>
+        )}
 
         <Table columns={columns} data={products} loading={loading} keyExtractor={p => p.id} />
       </div>

@@ -55,9 +55,25 @@ export function useOrderForm(initial?: Partial<OrderFormData>) {
     return Object.keys(next).length === 0
   }
 
+  function validateOwn(): boolean {
+    const next: OrderFormErrors = {}
+    if (!form.deliveryAddressId || isNaN(Number(form.deliveryAddressId))) next.deliveryAddressId = 'Endereço é obrigatório'
+    if (form.items.length === 0 || form.items.some(i => !i.productId || !i.quantity || Number(i.quantity) < 1))
+      next.items = 'Adicione ao menos um item válido'
+    setErrors(next)
+    return Object.keys(next).length === 0
+  }
+
   function toRequest() {
     return {
       customerId: Number(form.customerId),
+      deliveryAddressId: Number(form.deliveryAddressId),
+      items: form.items.map(i => ({ productId: Number(i.productId), quantity: Number(i.quantity) })),
+    }
+  }
+
+  function toOwnRequest() {
+    return {
       deliveryAddressId: Number(form.deliveryAddressId),
       items: form.items.map(i => ({ productId: Number(i.productId), quantity: Number(i.quantity) })),
     }
@@ -68,5 +84,5 @@ export function useOrderForm(initial?: Partial<OrderFormData>) {
     setErrors({})
   }
 
-  return { form, errors, setField, setItemField, addItem, removeItem, validate, toRequest, reset }
+  return { form, errors, setField, setItemField, addItem, removeItem, validate, validateOwn, toRequest, toOwnRequest, reset }
 }

@@ -1,9 +1,12 @@
 import api from '@/lib/api'
-import type { Category, Product, ProductStatus } from '@/models/catalog'
+import type { Category, Product, ProductCatalog, ProductStatus } from '@/models/catalog'
 
 export const catalogService = {
   findAllCategories: () =>
     api.get<Category[]>('/categories').then(r => r.data),
+
+  findCatalogProducts: () =>
+    api.get<ProductCatalog[]>('/products/catalog').then(r => r.data),
 
   createCategory: (body: { name: string; description?: string }) =>
     api.post<Category>('/categories', body).then(r => r.data),

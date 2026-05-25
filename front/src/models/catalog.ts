@@ -6,12 +6,15 @@ export interface Category {
   description?: string
 }
 
-export interface Product {
+export interface ProductCatalog {
   id: number
   name: string
   description?: string
   price: number
+  categoryId: number
+  categoryName: string
+}
+
+export interface Product extends ProductCatalog {
   status: ProductStatus
-  categoryId: number;
-  categoryName: string;
 }
