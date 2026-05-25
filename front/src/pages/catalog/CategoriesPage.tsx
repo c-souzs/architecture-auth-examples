@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { AppLayout } from '@/components/layout/AppLayout'
 import { Table, type Column } from '@/components/ui/Table'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
@@ -18,13 +17,8 @@ export function CategoriesPage() {
   const { form, errors, setField, validate, reset } = useCategoryForm()
 
   useEffect(() => {
-    load()
-  }, [])
-
-  function load() {
-    setLoading(true)
     catalogService.findAllCategories().then(setCategories).finally(() => setLoading(false))
-  }
+  }, [])
 
   function openCreate() {
     reset()
@@ -79,7 +73,7 @@ export function CategoriesPage() {
   ]
 
   return (
-    <AppLayout>
+    <>
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold text-gray-900">Categorias</h1>
@@ -114,6 +108,6 @@ export function CategoriesPage() {
           onChange={e => setField('description', e.target.value)}
         />
       </Modal>
-    </AppLayout>
+    </>
   )
 }
