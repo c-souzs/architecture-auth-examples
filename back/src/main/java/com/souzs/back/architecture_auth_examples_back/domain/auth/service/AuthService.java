@@ -121,6 +121,13 @@ public class AuthService {
         return new RefreshResponse(accessToken);
     }
 
+    @Transactional(readOnly = true)
+    public UserInfo me(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BadCredentialsException("Usuário não encontrado"));
+        return buildUserInfo(user);
+    }
+
     public void logout(HttpServletRequest request, HttpServletResponse response) {
         extractRefreshTokenCookie(request).ifPresent(rawToken -> {
             String tokenHash = sha256Hex(rawToken);
