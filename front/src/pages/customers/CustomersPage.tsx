@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { AppLayout } from '@/components/layout/AppLayout'
 import { Table, type Column } from '@/components/ui/Table'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
@@ -18,13 +17,9 @@ export function CustomersPage() {
   const { form, errors, setField, validate, toRequest, reset } = useCustomerForm()
 
   useEffect(() => {
-    load()
+    customerService.findAll().then(setCustomers).finally(() => setLoading(false))
   }, [])
 
-  function load() {
-    setLoading(true)
-    customerService.findAll().then(setCustomers).finally(() => setLoading(false))
-  }
 
   function openCreate() {
     reset()
@@ -33,7 +28,7 @@ export function CustomersPage() {
   }
 
   function openEdit(c: Customer) {
-    reset({ cpf: c.cpf, phone: c.phone ?? '', userId: String(c.user.id) })
+    reset({ cpf: c.cpf, phone: c.phone ?? '', userId: String(c.userId) })
     setEditingId(c.id)
     setModalOpen(true)
   }
@@ -57,17 +52,16 @@ export function CustomersPage() {
   }
 
   async function handleDelete(c: Customer) {
-    if (!confirm(`Excluir cliente ${c.user.email}?`)) return
+    if (!confirm(`Excluir cliente ${c.userEmail}?`)) return
     await customerService.delete(c.id)
     setCustomers(prev => prev.filter(x => x.id !== c.id))
   }
 
   const columns: Column<Customer>[] = [
     { header: 'ID', render: c => c.id, width: '60px' },
-    { header: 'Usuário', render: c => c.user.email },
+    { header: 'Usuário', render: c => c.userEmail },
     { header: 'CPF', render: c => c.cpf },
     { header: 'Telefone', render: c => c.phone ?? '—' },
-    { header: 'Endereços', render: c => c.addresses?.length ?? 0, width: '90px' },
     {
       header: 'Ações',
       width: '120px',
@@ -81,7 +75,7 @@ export function CustomersPage() {
   ]
 
   return (
-    <AppLayout>
+    <>
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold text-gray-900">Clientes</h1>
@@ -125,6 +119,6 @@ export function CustomersPage() {
           onChange={e => setField('phone', e.target.value)}
         />
       </Modal>
-    </AppLayout>
+    </>
   )
 }

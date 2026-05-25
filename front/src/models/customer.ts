@@ -1,7 +1,6 @@
-import type { User } from '@/models/auth'
-
 export interface Address {
   id: number
+  customerId: number
   street: string
   number: string
   complement?: string
@@ -11,9 +10,10 @@ export interface Address {
 }
 
 export interface Customer {
-  id: number
-  user: User
-  cpf: string
-  phone?: string
-  addresses: Address[]
+  id: number;
+  cpf: string;
+  phone: string;
+  userId: number;
+  userName: string;
+  userEmail: string;
 }

@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { AppLayout } from '@/components/layout/AppLayout'
 import { Table, type Column } from '@/components/ui/Table'
 import { Badge, statusVariant } from '@/components/ui/Badge'
 import { Modal } from '@/components/ui/Modal'
@@ -33,17 +32,12 @@ export function ProductsPage() {
   }, [])
 
   useEffect(() => {
-    load()
-  }, [filterCategory, filterStatus])
-
-  function load() {
-    setLoading(true)
     const params = {
       categoryId: filterCategory ? Number(filterCategory) : undefined,
       status: filterStatus as ProductStatus || undefined,
     }
     catalogService.findAllProducts(params).then(setProducts).finally(() => setLoading(false))
-  }
+  }, [filterCategory, filterStatus])
 
   function openCreate() {
     reset()
@@ -57,7 +51,7 @@ export function ProductsPage() {
       description: p.description ?? '',
       price: String(p.price),
       status: p.status,
-      categoryId: String(p.category.id),
+      categoryId: String(p.categoryId),
     })
     setEditingId(p.id)
     setModalOpen(true)
@@ -91,7 +85,7 @@ export function ProductsPage() {
 
   const columns: Column<Product>[] = [
     { header: 'Nome', render: p => p.name },
-    { header: 'Categoria', render: p => p.category.name },
+    { header: 'Categoria', render: p => p.categoryName },
     { header: 'Preço', render: p => `R$ ${Number(p.price).toFixed(2)}` },
     { header: 'Status', render: p => <Badge label={p.status} variant={statusVariant(p.status)} /> },
     {
@@ -107,7 +101,7 @@ export function ProductsPage() {
   ]
 
   return (
-    <AppLayout>
+    <>
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold text-gray-900">Produtos</h1>
@@ -120,7 +114,7 @@ export function ProductsPage() {
             placeholder="Todas as categorias"
             options={categoryOptions}
             value={filterCategory}
-            onChange={e => setFilterCategory(e.target.value)}
+            onChange={e => { setLoading(true); setFilterCategory(e.target.value) }}
             className="w-48"
           />
           <Select
@@ -128,7 +122,7 @@ export function ProductsPage() {
             placeholder="Todos os status"
             options={STATUS_OPTIONS}
             value={filterStatus}
-            onChange={e => setFilterStatus(e.target.value)}
+            onChange={e => { setLoading(true); setFilterStatus(e.target.value) }}
             className="w-44"
           />
         </div>
@@ -167,6 +161,6 @@ export function ProductsPage() {
           error={errors.categoryId}
         />
       </Modal>
-    </AppLayout>
+    </>
   )
 }

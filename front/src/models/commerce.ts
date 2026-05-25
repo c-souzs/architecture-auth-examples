@@ -1,6 +1,3 @@
-import type { Customer } from '@/models/customer'
-import type { Product } from '@/models/catalog'
-
 export type OrderStatus =
   | 'PENDING'
   | 'PAYMENT_CONFIRMED'
@@ -18,13 +15,15 @@ export type DeliveryStatus = 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' 
 
 export interface OrderItem {
   id: number
-  product: Product
+  productId: number
+  productName: string
   quantity: number
   unitPrice: number
 }
 
 export interface Payment {
   id: number
+  orderId: number
   status: PaymentStatus
   method: PaymentMethod
   amount: number
@@ -33,6 +32,7 @@ export interface Payment {
 
 export interface Delivery {
   id: number
+  orderId: number
   status: DeliveryStatus
   deliveryAddress: string
   trackingCode?: string
@@ -41,7 +41,8 @@ export interface Delivery {
 
 export interface Order {
   id: number
-  customer: Customer
+  customerId: number
+  customerName: string
   status: OrderStatus
   totalAmount: number
   createdAt: string

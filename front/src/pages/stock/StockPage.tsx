@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { AppLayout } from '@/components/layout/AppLayout'
 import { Table, type Column } from '@/components/ui/Table'
 import { Badge, statusVariant } from '@/components/ui/Badge'
 import { Modal } from '@/components/ui/Modal'
@@ -27,16 +26,11 @@ export function StockPage() {
   const { form, errors, setField, validate, toRequest, reset } = useStockAdjustForm()
 
   useEffect(() => {
-    load()
-  }, [filterStatus])
-
-  function load() {
-    setLoading(true)
     stockService
       .findAll({ status: filterStatus as StockStatus || undefined })
       .then(setStocks)
       .finally(() => setLoading(false))
-  }
+  }, [filterStatus])
 
   function openAdjust(stock: Stock) {
     reset({ quantity: String(stock.quantity), minQuantity: String(stock.minQuantity) })
@@ -56,7 +50,7 @@ export function StockPage() {
   }
 
   const columns: Column<Stock>[] = [
-    { header: 'Produto', render: s => s.product.name },
+    { header: 'Produto', render: s => s.productName },
     { header: 'Quantidade', render: s => s.quantity, width: '110px' },
     { header: 'Mínimo', render: s => s.minQuantity, width: '90px' },
     { header: 'Status', render: s => <Badge label={s.status} variant={statusVariant(s.status)} /> },
@@ -73,7 +67,7 @@ export function StockPage() {
   ]
 
   return (
-    <AppLayout>
+    <>
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold text-gray-900">Estoque</h1>
@@ -82,7 +76,7 @@ export function StockPage() {
             placeholder="Todos os status"
             options={STATUS_OPTIONS}
             value={filterStatus}
-            onChange={e => setFilterStatus(e.target.value)}
+            onChange={e => { setLoading(true); setFilterStatus(e.target.value) }}
             className="w-52"
           />
         </div>
@@ -92,7 +86,7 @@ export function StockPage() {
 
       <Modal
         open={!!adjustModal}
-        title={`Ajustar estoque — ${adjustModal?.product.name}`}
+        title={`Ajustar estoque — ${adjustModal?.productName}`}
         onClose={() => setAdjustModal(null)}
         footer={
           <>
@@ -120,6 +114,6 @@ export function StockPage() {
           error={errors.minQuantity}
         />
       </Modal>
-    </AppLayout>
+    </>
   )
 }

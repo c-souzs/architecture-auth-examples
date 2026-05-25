@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { AppLayout } from '@/components/layout/AppLayout'
 import { Table, type Column } from '@/components/ui/Table'
 import { Badge, statusVariant } from '@/components/ui/Badge'
 import { Modal } from '@/components/ui/Modal'
@@ -33,16 +32,11 @@ export function OrdersPage() {
   const { form, errors, setField, setItemField, addItem, removeItem, validate, toRequest, reset } = useOrderForm()
 
   useEffect(() => {
-    load()
-  }, [filterStatus])
-
-  function load() {
-    setLoading(true)
     commerceService
       .findAllOrders({ status: filterStatus as OrderStatus || undefined })
       .then(setOrders)
       .finally(() => setLoading(false))
-  }
+  }, [filterStatus])
 
   async function handleCreate() {
     if (!validate()) return
@@ -76,7 +70,7 @@ export function OrdersPage() {
 
   const columns: Column<Order>[] = [
     { header: 'ID', render: o => `#${o.id}`, width: '60px' },
-    { header: 'Cliente', render: o => o.customer?.user?.email ?? o.customer?.cpf ?? '—' },
+    { header: 'Cliente', render: o => o.customerName },
     { header: 'Status', render: o => <Badge label={o.status} variant={statusVariant(o.status)} /> },
     { header: 'Total', render: o => `R$ ${Number(o.totalAmount).toFixed(2)}`, width: '100px' },
     { header: 'Criado em', render: o => new Date(o.createdAt).toLocaleDateString('pt-BR'), width: '110px' },
@@ -100,7 +94,7 @@ export function OrdersPage() {
   ]
 
   return (
-    <AppLayout>
+    <>
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold text-gray-900">Pedidos</h1>
@@ -110,7 +104,7 @@ export function OrdersPage() {
               placeholder="Todos os status"
               options={STATUS_OPTIONS}
               value={filterStatus}
-              onChange={e => setFilterStatus(e.target.value)}
+              onChange={e => { setLoading(true); setFilterStatus(e.target.value) }}
               className="w-52"
             />
             <Button onClick={() => { reset(); setCreateModal(true) }}>Novo pedido</Button>
@@ -181,6 +175,6 @@ export function OrdersPage() {
           ))}
         </div>
       </Modal>
-    </AppLayout>
+    </>
   )
 }

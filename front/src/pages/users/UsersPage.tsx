@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { AppLayout } from '@/components/layout/AppLayout'
 import { Table, type Column } from '@/components/ui/Table'
 import { Badge, statusVariant } from '@/components/ui/Badge'
 import { Modal } from '@/components/ui/Modal'
@@ -23,7 +22,6 @@ export function UsersPage() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    setLoading(true)
     userService.findAll(page, size).then(setData).finally(() => setLoading(false))
   }, [page, size])
 
@@ -117,7 +115,7 @@ export function UsersPage() {
   ]
 
   return (
-    <AppLayout>
+    <>
       <div className="flex flex-col gap-6">
         <h1 className="text-xl font-semibold text-gray-900">Usuários</h1>
 
@@ -134,7 +132,7 @@ export function UsersPage() {
             totalPages={data.totalPages}
             totalElements={data.totalElements}
             size={data.size}
-            onPageChange={goToPage}
+            onPageChange={p => { setLoading(true); goToPage(p) }}
           />
         )}
       </div>
@@ -164,6 +162,6 @@ export function UsersPage() {
           ))}
         </div>
       </Modal>
-    </AppLayout>
+    </>
   )
 }

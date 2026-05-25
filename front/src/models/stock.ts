@@ -1,11 +1,9 @@
-import type { Product } from '@/models/catalog'
-import type { User } from '@/models/auth'
-
 export type StockStatus = 'REGULAR' | 'DIVERGENT' | 'PENDING_COUNT' | 'LOW_STOCK'
 
 export interface Stock {
   id: number
-  product: Product
+  productId: number
+  productName: string
   quantity: number
   minQuantity: number
   status: StockStatus
@@ -14,8 +12,10 @@ export interface Stock {
 
 export interface StockCount {
   id: number
-  stock: Stock
-  countedBy: User
+  stockId: number
+  productName: string
+  countedByUserId: number
+  countedByName: string
   countedQuantity: number
   countedAt: string
 }
