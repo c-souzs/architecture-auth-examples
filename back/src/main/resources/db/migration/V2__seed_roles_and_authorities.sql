@@ -58,7 +58,6 @@ WHERE r.name = 'MANAGER' AND a.name IN (
     'order:read', 'order:manage',
     'payment:read', 'payment:manage',
     'delivery:read', 'delivery:manage',
-    'customer:read',
     'stock:read',
     'report:read'
 );
@@ -68,18 +67,16 @@ INSERT INTO role_authorities (role_id, authority_id)
 SELECT r.id, a.id FROM roles r, authorities a
 WHERE r.name = 'CUSTOMER' AND a.name IN (
     'product:read',
-    'category:read',
     'order:read', 'order:write', 'order:cancel',
     'payment:read',
-    'delivery:read',
-    'customer:read', 'customer:write'
+    'delivery:read'
 );
 
 -- STOCK_MANAGER
 INSERT INTO role_authorities (role_id, authority_id)
 SELECT r.id, a.id FROM roles r, authorities a
 WHERE r.name = 'STOCK_MANAGER' AND a.name IN (
-    'product:read', 'product:write', 'product:delete',
+    'product:read', 'product:write',
     'category:read', 'category:write', 'category:delete',
     'stock:read', 'stock:write', 'stock:validate'
 );
@@ -88,7 +85,5 @@ WHERE r.name = 'STOCK_MANAGER' AND a.name IN (
 INSERT INTO role_authorities (role_id, authority_id)
 SELECT r.id, a.id FROM roles r, authorities a
 WHERE r.name = 'STOCK_INTERN' AND a.name IN (
-    'product:read',
-    'category:read',
     'stock:read', 'stock:count'
 );
