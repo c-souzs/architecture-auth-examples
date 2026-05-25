@@ -968,3 +968,377 @@ Request chega
 | Grace window | Exige Redis para armazenar `{R1_hash → R2_raw}` temporariamente; sem Redis, implementação limpa impossível | Branch com Redis |
 | Rate limiting / account lockout | Proteção de brute force | Branch posterior |
 | Device metadata | Além do escopo desta iteração | Branch posterior |
+
+---
+
+## Front-end — Arquitetura de Autenticação
+
+O front-end é um cliente de integração — não é o foco do projeto. Mas a camada de autenticação no cliente tem decisões de design relevantes que refletem os mesmos princípios do back: tokens fora do localStorage, renovação transparente, sem estado duplicado.
+
+### Camadas e responsabilidades
+
+```
+models/auth.ts          → tipos: UserInfo, LoginResponse, RefreshResponse
+services/authService.ts → chamadas HTTP brutas (sem lógica)
+lib/api.ts              → instância Axios com baseURL e withCredentials
+lib/interceptors.ts     → AT em memória, refresh automático, mutex anti-StrictMode
+contexts/auth/          → estado global de autenticação (Provider + contexto)
+hooks/useAuth.ts        → acesso ao contexto com fail-fast
+```
+
+Cada camada tem uma única responsabilidade. `authService` não sabe de tokens; `interceptors` não sabe de estado React; `AuthContext` não sabe de HTTP.
+
+---
+
+### `models/auth.ts` — Tipos de resposta
+
+```typescript
+export interface UserInfo {
+  id: number
+  email: string
+  name: string
+  roles: string[]        // "CUSTOMER", "ADMIN"
+  authorities: string[]  // "product:read", "order:write"
+}
+
+export interface LoginResponse {
+  accessToken: string
+  user: UserInfo
+}
+
+export interface RefreshResponse {
+  accessToken: string  // refresh não devolve user — AT traz as claims
+}
+```
+
+`UserInfo` usa `string[]` para roles e authorities — não os objetos completos `Role`/`Authority`. O AT carrega esses valores como strings; o front só precisa exibi-los ou checar permissões simples, não navegar a estrutura de objetos completos.
+
+`User` (objeto completo de gerenciamento) e `UserInfo` (objeto de sessão autenticada) são tipos distintos intencionalmente — contextos de uso diferentes.
+
+---
+
+### `lib/api.ts` — Instância Axios
+
+```typescript
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL,
+  headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
+})
+```
+
+**`withCredentials: true`** é o ponto crítico. Sem ele, o browser não envia nem recebe cookies cross-origin — o RT em cookie HttpOnly nunca chegaria ao servidor no refresh. Toda request da aplicação passa por essa instância, então o cookie é enviado automaticamente em `POST /auth/refresh` sem nenhuma ação extra no código.
+
+`baseURL` via variável de ambiente — nunca hardcoded. Em produção, troca de `http://localhost:8080` para o domínio real sem tocar em código.
+
+---
+
+### `services/authService.ts` — Chamadas HTTP
+
+```typescript
+export const authService = {
+  register: (body) => api.post<LoginResponse>('/auth/register', body).then(r => r.data),
+  login:    (body) => api.post<LoginResponse>('/auth/login', body).then(r => r.data),
+  refresh:  ()     => api.post<RefreshResponse>('/auth/refresh').then(r => r.data),
+  logout:   ()     => api.post('/auth/logout'),
+  me:       ()     => api.get<UserInfo>('/auth/me').then(r => r.data),
+}
+```
+
+Wrapper fino: cada método mapeia para um endpoint e extrai `r.data`. Sem lógica de token, sem estado, sem efeitos colaterais. Fácil de testar e substituir.
+
+`refresh()` não precisa passar token no body — o RT chega via cookie (gerenciado pelo browser automaticamente graças ao `withCredentials`).
+
+---
+
+### `lib/interceptors.ts` — O núcleo da autenticação
+
+Este arquivo centraliza três responsabilidades distintas:
+
+#### 1. AT em memória de módulo
+
+```typescript
+let _accessToken: string | null = null
+
+export const getAccessToken = () => _accessToken
+export const updateAccessToken = (token: string | null) => { _accessToken = token }
+```
+
+AT vive em variável de módulo — não em `localStorage`, não em `sessionStorage`. Módulos JS são singletons (cacheados pelo bundler): uma única instância compartilhada por toda a aplicação.
+
+**Por que não localStorage:** XSS pode ler `localStorage` trivialmente. AT em memória não é acessível por scripts injetados.
+
+**Por que não só o state do React:** interceptors Axios rodam fora do ciclo React. Se o AT estivesse só no state, o interceptor de request não conseguiria lê-lo sem hooks (que não podem ser chamados fora de componentes).
+
+O `AuthContext` mantém o AT também no state React — para re-render quando muda. Os dois ficam sincronizados via `setToken()` no Provider.
+
+---
+
+#### 2. `restoreSession()` — Mutex contra StrictMode
+
+```typescript
+let _restorePromise: Promise<{ accessToken: string }> | null = null
+
+export function restoreSession(): Promise<{ accessToken: string }> {
+  if (!_restorePromise) {
+    _restorePromise = authService.refresh()
+      .finally(() => { _restorePromise = null })
+  }
+  return _restorePromise
+}
+```
+
+**O problema:** React StrictMode (desenvolvimento) monta → desmonta → remonta componentes propositalmente para detectar efeitos colaterais não-limpos. `useEffect` dispara duas vezes. Sem proteção, duas chamadas a `POST /auth/refresh` saem do cliente com o mesmo RT:
+
+```
+Call 1 → POST /auth/refresh (RT válido) → servidor: R1 used=true, R2 emitido
+Call 2 → POST /auth/refresh (mesmo RT)  → servidor: R1 used=true → REUSE DETECTED → 401
+```
+
+**A solução:** promise de módulo compartilhada. JavaScript é single-thread — o `if (!_restorePromise)` e o `_restorePromise = ...` executam sincronicamente, sem ceder controle ao event loop. Call 2 chega quando `_restorePromise` já está setada e retorna a mesma promise. Apenas uma request chega ao servidor.
+
+```
+Call 1 → _restorePromise = null  → cria promise → POST /auth/refresh (única request)
+Call 2 → _restorePromise != null → retorna mesma promise (sem request)
+Promise resolve → ambas recebem o mesmo novo AT
+```
+
+O `finally` limpa a promise após resolver — logout seguido de novo login funciona corretamente (nova chamada cria nova promise).
+
+**Diferença do Problema A (retry automático):** no StrictMode ambas as calls partem antes de qualquer uma ser processada — o mutex client-side intercepta a segunda antes de sair da rede. No retry real (rede instável), o servidor já consumiu o RT quando o retry chega — exige solução server-side com Redis. São problemas com aparência similar mas raízes distintas.
+
+---
+
+#### 3. Interceptors Axios
+
+```typescript
+export function setupInterceptors({ onRefreshed, onAuthFailed }: InterceptorCallbacks): () => void {
+  const requestInterceptor = api.interceptors.request.use(config => {
+    if (_accessToken) config.headers.Authorization = `Bearer ${_accessToken}`
+    return config
+  })
+
+  let refreshPromise: Promise<{ at: string }> | null = null
+
+  const responseInterceptor = api.interceptors.response.use(
+    response => response,
+    async error => { ... }
+  )
+
+  return () => {
+    api.interceptors.request.eject(requestInterceptor)
+    api.interceptors.response.eject(responseInterceptor)
+  }
+}
+```
+
+**Request interceptor:** injeta `Authorization: Bearer <AT>` em toda request onde `_accessToken` existe. Transparente para o resto da aplicação — nenhum service ou componente precisa gerenciar headers.
+
+**Response interceptor — fluxo de 401:**
+
+```typescript
+const SKIP_REFRESH = ['/auth/refresh', '/auth/login', '/auth/register', '/auth/logout']
+if (SKIP_REFRESH.some(path => request.url?.includes(path))) return Promise.reject(error)
+
+if (error.response?.status !== 401 || request._retry) return Promise.reject(error)
+
+request._retry = true
+```
+
+`SKIP_REFRESH`: endpoints de auth não devem disparar refresh quando falham — um 401 em `/auth/login` é credencial errada, não AT expirado. Sem essa lista, uma senha incorreta causaria loop de refresh.
+
+`request._retry`: flag que marca a request original. Se o refresh falhar e a request retentada receber outro 401, o `_retry = true` impede novo ciclo — evita loop infinito.
+
+**`refreshPromise` — mutex para requests concorrentes:**
+
+```typescript
+if (!refreshPromise) {
+  refreshPromise = authService.refresh()
+    .then(data => {
+      updateAccessToken(data.accessToken)
+      onRefreshed(data.accessToken)
+      return { at: data.accessToken }
+    })
+    .catch(err => {
+      onAuthFailed()
+      window.location.href = `/login?from=${encodeURIComponent(...)}`
+      return Promise.reject(err)
+    })
+    .finally(() => { refreshPromise = null })
+}
+
+const { at } = await refreshPromise
+request.headers.Authorization = `Bearer ${at}`
+return api(request)
+```
+
+Se múltiplas requests recebem 401 simultaneamente (AT expirado), todas entram no interceptor ao mesmo tempo. Sem o mutex, todas disparariam `POST /auth/refresh` — apenas a primeira usaria RT válido, as demais encontrariam RT já rotacionado → reuse detection → logout forçado.
+
+Com `refreshPromise`: primeira call cria a promise, demais aguardam. Quando a promise resolve, todas recebem o mesmo novo AT e re-tentam suas requests originais com o token correto.
+
+`onRefreshed` e `onAuthFailed` são callbacks injetados pelo `AuthContext` — ponte entre o interceptor (fora do React) e o estado React. Inversão de dependência: o interceptor não importa o contexto diretamente.
+
+**Retorno da função (cleanup):**
+
+```typescript
+return () => {
+  api.interceptors.request.eject(requestInterceptor)
+  api.interceptors.response.eject(responseInterceptor)
+}
+```
+
+`setupInterceptors` retorna uma função de cleanup. Usada pelo `useEffect` do `AuthContext` — quando o componente desmonta (incluindo o ciclo do StrictMode), os interceptors são removidos. Sem isso, o StrictMode acumularia interceptors duplicados a cada ciclo.
+
+---
+
+### `contexts/auth/authContext.ts` — Definição do Contexto
+
+```typescript
+export interface AuthContextValue {
+  user: UserInfo | null
+  accessToken: string | null
+  isAuthenticated: boolean
+  initializing: boolean
+  login: (...) => Promise<void>
+  register: (...) => Promise<void>
+  logout: () => Promise<void>
+  setAccessToken: (token: string) => void
+}
+
+export const AuthContext = createContext<AuthContextValue | null>(null)
+```
+
+Separado do Provider intencionalmente. `authContext.ts` exporta só a definição — sem dependência de `authService`, `interceptors` ou React state. Componentes que só leem o contexto importam daqui; só o Provider precisa do arquivo maior.
+
+`createContext(null)` como default — se `useAuth()` for chamado fora do Provider, o `null` causa um erro explícito e claro (via `useAuth`) em vez de comportamento silencioso e difícil de rastrear.
+
+---
+
+### `contexts/auth/AuthContext.tsx` — Provider
+
+```typescript
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<UserInfo | null>(null)
+  const [accessToken, _setAccessToken] = useState<string | null>(null)
+  const [initializing, setInitializing] = useState(true)
+```
+
+**`initializing`:** flag que indica que a sessão ainda está sendo restaurada. A aplicação exibe um loading enquanto `true` — evita o flash onde rotas protegidas redirecionam para login antes de confirmar que há sessão válida. Só vira `false` no `.finally()` do `restoreSession()`.
+
+**`setToken()` — sincronização de dois estados:**
+
+```typescript
+function setToken(token: string | null) {
+  updateAccessToken(token) // módulo de interceptors
+  _setAccessToken(token)   // state do React
+}
+```
+
+AT precisa existir em dois lugares: variável de módulo (acessível pelos interceptors fora do React) e state React (causa re-render quando muda, expõe via contexto). `setToken` garante que os dois ficam sempre em sincronia.
+
+**`useEffect` — ordem de operações:**
+
+```typescript
+useEffect(() => {
+  const eject = setupInterceptors({
+    onRefreshed: token => _setAccessToken(token),
+    onAuthFailed: clearAuth,
+  })
+
+  restoreSession()
+    .then(data => {
+      setToken(data.accessToken)
+      return authService.me()
+    })
+    .then(data => setUser(data))
+    .catch(() => {})
+    .finally(() => setInitializing(false))
+
+  return eject
+}, [clearAuth])
+```
+
+Interceptors são registrados **antes** de `restoreSession()`. Se `me()` receber um 401 (AT expirado na janela de restauração), o interceptor já está de pé para interceptar e fazer refresh. Inverter a ordem criaria uma janela onde requests podem falhar sem tratamento.
+
+`onRefreshed` usa `_setAccessToken` (não `setToken`) — quando o interceptor notifica que houve refresh, o AT já foi atualizado no módulo via `updateAccessToken` dentro do próprio interceptor. Chamar `setToken` aqui atualizaria o módulo novamente (redundante) mas seria inofensivo. Usar `_setAccessToken` é mais preciso.
+
+`clearAuth` via `useCallback` — estabiliza a referência para não recriar o `useEffect` a cada render.
+
+---
+
+### `hooks/useAuth.ts`
+
+```typescript
+export function useAuth() {
+  const ctx = useContext(AuthContext)
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
+  return ctx
+}
+```
+
+Wrapper sobre `useContext` com fail-fast. Sem o `throw`, `ctx` seria `null` fora do Provider e erros apareceriam como "cannot read property of null" em lugares aleatórios. O throw localiza o problema na fonte.
+
+---
+
+### Fluxos completos no front
+
+#### Boot (primeiro carregamento)
+
+```
+App monta → AuthProvider monta
+  → useEffect dispara
+  → setupInterceptors() registra request + response interceptors
+  → restoreSession() → POST /auth/refresh
+      → 200: setToken(AT) → authService.me() → setUser(data) → initializing=false
+      → 401: catch() → initializing=false (usuário não autenticado, fluxo normal)
+```
+
+#### Login
+
+```
+Usuário submete form
+  → authService.login({ email, password })
+  → POST /auth/login → 200 { accessToken, user }
+  → setToken(accessToken)   → AT no módulo + state
+  → setUser(user)
+  → isAuthenticated = true → router redireciona
+```
+
+#### Request com AT expirado
+
+```
+Qualquer request protegida → 401
+  → response interceptor captura
+  → não está em SKIP_REFRESH, não tem _retry → refresh flow
+  → refreshPromise não existe → POST /auth/refresh
+      → 200: updateAccessToken + onRefreshed → state atualizado
+      → request original retentada com novo AT
+      → 200: dados chegam normalmente ao componente
+      → 401: onAuthFailed → clearAuth → redirect /login
+```
+
+#### Logout
+
+```
+logout() chamado
+  → authService.logout() → POST /auth/logout
+      → back revoga RT no banco, limpa cookie (Max-Age=0)
+  → clearAuth() → setToken(null) + setUser(null)
+  → isAuthenticated = false → router redireciona
+```
+
+---
+
+### Decisões de design front-end
+
+| Decisão | Razão |
+|---|---|
+| AT em variável de módulo, não localStorage | XSS não acessa memória de módulo |
+| AT também no state React | Re-render ao mudar; exposto via contexto para componentes |
+| `withCredentials: true` na instância Axios | RT em cookie HttpOnly precisa dessa flag para trafegar cross-origin |
+| `restoreSession()` com promise de módulo | StrictMode dispara `useEffect` duas vezes; mutex evita dupla rotação de RT |
+| Interceptors registrados antes de `restoreSession()` | `me()` pode receber 401; interceptor precisa estar ativo |
+| `setupInterceptors` retorna cleanup | StrictMode acumularia interceptors duplicados sem eject |
+| `initializing` flag | Evita redirect prematuro para login antes de confirmar sessão |
+| `authContext.ts` separado do Provider | Componentes leitores não dependem das importações pesadas do Provider |
+| Callbacks `onRefreshed`/`onAuthFailed` | Interceptor não importa React diretamente — inversão de dependência |

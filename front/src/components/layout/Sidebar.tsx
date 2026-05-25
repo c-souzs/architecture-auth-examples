@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { useAuth } from '@/hooks/useAuth'
 
 const navItems = [
   { to: '/users', label: 'Usuários' },
@@ -10,6 +11,8 @@ const navItems = [
 ]
 
 export function Sidebar() {
+  const { logout } = useAuth()
+
   return (
     <aside className="w-56 min-h-screen bg-gray-900 flex flex-col">
       <div className="px-5 py-5 border-b border-gray-700">
@@ -32,6 +35,14 @@ export function Sidebar() {
           </NavLink>
         ))}
       </nav>
+      <div className="px-2 py-3 border-t border-gray-700">
+        <button
+          onClick={logout}
+          className="w-full flex items-center px-3 py-2 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
+        >
+          Sair
+        </button>
+      </div>
     </aside>
   )
 }

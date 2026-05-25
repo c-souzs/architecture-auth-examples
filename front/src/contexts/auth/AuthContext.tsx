@@ -9,6 +9,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Guarda no state para evitar que seja roubado no local/session Storage
   const [accessToken, _setAccessToken] = useState<string | null>(null)
   const [initializing, setInitializing] = useState(true)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   // Wrapper do state accessToken
   function setToken(token: string | null) {
@@ -54,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function logout() {
+    setIsLoggingOut(true)
     await authService.logout().catch(() => {})
     clearAuth()
   }
@@ -68,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       accessToken,
       isAuthenticated: accessToken !== null,
       initializing,
+      isLoggingOut,
       login,
       register,
       logout,
