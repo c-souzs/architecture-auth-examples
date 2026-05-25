@@ -1,5 +1,6 @@
 package com.souzs.back.architecture_auth_examples_back.domain.catalog.service;
 
+import com.souzs.back.architecture_auth_examples_back.domain.catalog.dto.ProductCatalogResponse;
 import com.souzs.back.architecture_auth_examples_back.domain.catalog.dto.ProductRequest;
 import com.souzs.back.architecture_auth_examples_back.domain.catalog.dto.ProductResponse;
 import com.souzs.back.architecture_auth_examples_back.domain.catalog.entity.Category;
@@ -21,6 +22,13 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+
+    @Transactional(readOnly = true)
+    public List<ProductCatalogResponse> findAllActive() {
+        return productRepository.findAllByStatus(ProductStatus.ACTIVE).stream()
+                .map(ProductCatalogResponse::from)
+                .toList();
+    }
 
     @Transactional(readOnly = true)
     public List<ProductResponse> findAll(Long categoryId, ProductStatus status) {

@@ -1,5 +1,6 @@
 package com.souzs.back.architecture_auth_examples_back.domain.catalog.controller;
 
+import com.souzs.back.architecture_auth_examples_back.domain.catalog.dto.ProductCatalogResponse;
 import com.souzs.back.architecture_auth_examples_back.domain.catalog.dto.ProductRequest;
 import com.souzs.back.architecture_auth_examples_back.domain.catalog.dto.ProductResponse;
 import com.souzs.back.architecture_auth_examples_back.domain.catalog.entity.ProductStatus;
@@ -19,6 +20,12 @@ import java.util.List;
 public class ProductController {
 
     private final ProductService productService;
+
+    @GetMapping("/catalog")
+    @PreAuthorize("hasAuthority('product:catalog')")
+    public List<ProductCatalogResponse> findCatalog() {
+        return productService.findAllActive();
+    }
 
     @GetMapping
     @PreAuthorize("hasAuthority('product:read')")

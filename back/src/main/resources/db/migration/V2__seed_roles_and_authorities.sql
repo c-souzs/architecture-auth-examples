@@ -27,7 +27,9 @@ INSERT INTO authorities (name) VALUES
     ('stock:write'),
     ('stock:count'),
     ('stock:validate'),
-    ('report:read');
+    ('report:read'),
+    ('product:catalog'),
+    ('order:own');
 
 -- =============================================
 -- ROLES
@@ -66,8 +68,8 @@ WHERE r.name = 'MANAGER' AND a.name IN (
 INSERT INTO role_authorities (role_id, authority_id)
 SELECT r.id, a.id FROM roles r, authorities a
 WHERE r.name = 'CUSTOMER' AND a.name IN (
-    'product:read',
-    'order:read', 'order:write', 'order:cancel',
+    'product:catalog',
+    'order:own',
     'payment:read',
     'delivery:read'
 );

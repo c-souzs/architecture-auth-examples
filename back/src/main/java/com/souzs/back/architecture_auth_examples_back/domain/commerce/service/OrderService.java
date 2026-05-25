@@ -4,6 +4,7 @@ import com.souzs.back.architecture_auth_examples_back.domain.catalog.entity.Prod
 import com.souzs.back.architecture_auth_examples_back.domain.catalog.entity.ProductStatus;
 import com.souzs.back.architecture_auth_examples_back.domain.catalog.repository.ProductRepository;
 import com.souzs.back.architecture_auth_examples_back.domain.commerce.dto.OrderItemRequest;
+import com.souzs.back.architecture_auth_examples_back.domain.commerce.dto.OrderOwnRequest;
 import com.souzs.back.architecture_auth_examples_back.domain.commerce.dto.OrderRequest;
 import com.souzs.back.architecture_auth_examples_back.domain.commerce.dto.OrderResponse;
 import com.souzs.back.architecture_auth_examples_back.domain.commerce.entity.*;
@@ -38,6 +39,39 @@ public class OrderService {
     private final ProductRepository productRepository;
 
     @Transactional(readOnly = true)
+    public List<OrderResponse> findMyOrders(Long userId, OrderStatus status) {
+        if (status != null) {
+            return orderRepository.findAllByCustomer_UserIdAndStatus(userId, status).stream()
+                    .map(OrderResponse::from).toList();
+        }
+        return orderRepository.findAllByCustomer_UserId(userId).stream()
+                .map(OrderResponse::from).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public OrderResponse findMyById(Long id, Long userId) {
+        return orderRepository.findByIdAndCustomer_UserId(id, userId)
+                .map(OrderResponse::from)
+                .orElseThrow(() -> new EntityNotFoundException("Pedido não encontrado: " + id));
+    }
+
+    public OrderResponse cancelOwn(Long id, Long userId) {
+        Order order = orderRepository.findByIdAndCustomer_UserId(id, userId)
+                .orElseThrow(() -> new EntityNotFoundException("Pedido não encontrado: " + id));
+
+        if (!CANCELLABLE.contains(order.getStatus())) {
+            throw new IllegalStateException("Pedido não pode ser cancelado no status: " + order.getStatus());
+        }
+
+        if (order.getStatus() == OrderStatus.PAYMENT_CONFIRMED && order.getPayment() != null) {
+            order.getPayment().setStatus(PaymentStatus.REFUNDED);
+        }
+
+        order.setStatus(OrderStatus.CANCELLED);
+        return OrderResponse.from(order);
+    }
+
+    @Transactional(readOnly = true)
     public List<OrderResponse> findAll(Long customerId, OrderStatus status) {
         if (customerId != null && status != null) {
             return orderRepository.findAllByCustomerIdAndStatus(customerId, status).stream()
@@ -64,9 +98,18 @@ public class OrderService {
     public OrderResponse create(OrderRequest request) {
         Customer customer = customerRepository.findById(request.customerId())
                 .orElseThrow(() -> new EntityNotFoundException("Customer não encontrado: " + request.customerId()));
+        return buildAndSaveOrder(customer, request.deliveryAddressId(), request.items());
+    }
 
-        Address address = addressRepository.findById(request.deliveryAddressId())
-                .orElseThrow(() -> new EntityNotFoundException("Endereço não encontrado: " + request.deliveryAddressId()));
+    public OrderResponse createOwn(Long userId, OrderOwnRequest request) {
+        Customer customer = customerRepository.findByUserId(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Perfil de cliente não encontrado para o usuário: " + userId));
+        return buildAndSaveOrder(customer, request.deliveryAddressId(), request.items());
+    }
+
+    private OrderResponse buildAndSaveOrder(Customer customer, Long deliveryAddressId, List<OrderItemRequest> items) {
+        Address address = addressRepository.findById(deliveryAddressId)
+                .orElseThrow(() -> new EntityNotFoundException("Endereço não encontrado: " + deliveryAddressId));
 
         if (!address.getCustomer().getId().equals(customer.getId())) {
             throw new IllegalArgumentException("Endereço não pertence ao customer informado");
@@ -76,7 +119,7 @@ public class OrderService {
         order.setCustomer(customer);
         order.setStatus(OrderStatus.PENDING);
 
-        for (OrderItemRequest itemReq : request.items()) {
+        for (OrderItemRequest itemReq : items) {
             Product product = productRepository.findById(itemReq.productId())
                     .orElseThrow(() -> new EntityNotFoundException("Produto não encontrado: " + itemReq.productId()));
 
