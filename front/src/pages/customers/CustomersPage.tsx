@@ -4,7 +4,10 @@ import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useCustomerForm } from '@/hooks/useCustomerForm'
+import { usePermissions } from '@/hooks/usePermissions'
 import { customerService } from '@/services/customerService'
+import { AccessGuard } from '@/components/layout/AccessGuard'
+import { Authority } from '@/models/permissions'
 import type { Customer } from '@/models/customer'
 
 export function CustomersPage() {
@@ -15,6 +18,9 @@ export function CustomersPage() {
   const [saving, setSaving] = useState(false)
 
   const { form, errors, setField, validate, toRequest, reset } = useCustomerForm()
+  const { canAccess } = usePermissions()
+  const canWrite = canAccess({ authorities: [Authority.CUSTOMER_WRITE] })
+  const canDelete = canAccess({ authorities: [Authority.CUSTOMER_DELETE] })
 
   useEffect(() => {
     customerService.findAll().then(setCustomers).finally(() => setLoading(false))
@@ -62,16 +68,20 @@ export function CustomersPage() {
     { header: 'Usuário', render: c => c.userEmail },
     { header: 'CPF', render: c => c.cpf },
     { header: 'Telefone', render: c => c.phone ?? '—' },
-    {
+    ...(canWrite || canDelete ? [{
       header: 'Ações',
       width: '120px',
-      render: c => (
+      render: (c: Customer) => (
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => openEdit(c)} className="text-xs px-2 py-1">Editar</Button>
-          <Button variant="danger" onClick={() => handleDelete(c)} className="text-xs px-2 py-1">Excluir</Button>
+          <AccessGuard authorities={[Authority.CUSTOMER_WRITE]} fallback={null}>
+            <Button variant="secondary" onClick={() => openEdit(c)} className="text-xs px-2 py-1">Editar</Button>
+          </AccessGuard>
+          <AccessGuard authorities={[Authority.CUSTOMER_DELETE]} fallback={null}>
+            <Button variant="danger" onClick={() => handleDelete(c)} className="text-xs px-2 py-1">Excluir</Button>
+          </AccessGuard>
         </div>
       ),
-    },
+    }] : []),
   ]
 
   return (
@@ -79,7 +89,9 @@ export function CustomersPage() {
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold text-gray-900">Clientes</h1>
-          <Button onClick={openCreate}>Novo cliente</Button>
+          <AccessGuard authorities={[Authority.CUSTOMER_WRITE]} fallback={null}>
+            <Button onClick={openCreate}>Novo cliente</Button>
+          </AccessGuard>
         </div>
 
         <Table columns={columns} data={customers} loading={loading} keyExtractor={c => c.id} />

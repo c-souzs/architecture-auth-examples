@@ -6,7 +6,10 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { useOrderForm } from '@/hooks/useOrderForm'
+import { usePermissions } from '@/hooks/usePermissions'
 import { commerceService } from '@/services/commerceService'
+import { AccessGuard } from '@/components/layout/AccessGuard'
+import { Authority } from '@/models/permissions'
 import type { Order, OrderStatus } from '@/models/commerce'
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
@@ -30,6 +33,10 @@ export function OrdersPage() {
   const [saving, setSaving] = useState(false)
 
   const { form, errors, setField, setItemField, addItem, removeItem, validate, toRequest, reset } = useOrderForm()
+  const { canAccess } = usePermissions()
+  const canWrite = canAccess({ authorities: [Authority.ORDER_WRITE] })
+  const canManage = canAccess({ authorities: [Authority.ORDER_MANAGE] })
+  const canCancel = canAccess({ authorities: [Authority.ORDER_CANCEL] })
 
   useEffect(() => {
     commerceService
@@ -74,23 +81,29 @@ export function OrdersPage() {
     { header: 'Status', render: o => <Badge label={o.status} variant={statusVariant(o.status)} /> },
     { header: 'Total', render: o => `R$ ${Number(o.totalAmount).toFixed(2)}`, width: '100px' },
     { header: 'Criado em', render: o => new Date(o.createdAt).toLocaleDateString('pt-BR'), width: '110px' },
-    {
+    ...(canWrite || canManage || canCancel ? [{
       header: 'Ações',
       width: '200px',
-      render: o => (
+      render: (o: Order) => (
         <div className="flex gap-1.5 flex-wrap">
-          {ADVANCEABLE.includes(o.status) && (
-            <Button variant="secondary" onClick={() => handleAdvance(o)} className="text-xs px-2 py-1">Avançar</Button>
-          )}
-          {CANCELLABLE.includes(o.status) && (
-            <Button variant="danger" onClick={() => handleCancel(o)} className="text-xs px-2 py-1">Cancelar</Button>
-          )}
-          {o.status === 'DELIVERED' && (
-            <Button variant="secondary" onClick={() => handleRefund(o)} className="text-xs px-2 py-1">Estornar</Button>
-          )}
+          <AccessGuard authorities={[Authority.ORDER_MANAGE]} fallback={null}>
+            {ADVANCEABLE.includes(o.status) && (
+              <Button variant="secondary" onClick={() => handleAdvance(o)} className="text-xs px-2 py-1">Avançar</Button>
+            )}
+          </AccessGuard>
+          <AccessGuard authorities={[Authority.ORDER_CANCEL]} fallback={null}>
+            {CANCELLABLE.includes(o.status) && (
+              <Button variant="danger" onClick={() => handleCancel(o)} className="text-xs px-2 py-1">Cancelar</Button>
+            )}
+          </AccessGuard>
+          <AccessGuard authorities={[Authority.ORDER_MANAGE]} fallback={null}>
+            {o.status === 'DELIVERED' && (
+              <Button variant="secondary" onClick={() => handleRefund(o)} className="text-xs px-2 py-1">Estornar</Button>
+            )}
+          </AccessGuard>
         </div>
       ),
-    },
+    }] : []),
   ]
 
   return (
@@ -107,7 +120,9 @@ export function OrdersPage() {
               onChange={e => { setLoading(true); setFilterStatus(e.target.value) }}
               className="w-52"
             />
-            <Button onClick={() => { reset(); setCreateModal(true) }}>Novo pedido</Button>
+            <AccessGuard authorities={[Authority.ORDER_WRITE]} fallback={null}>
+              <Button onClick={() => { reset(); setCreateModal(true) }}>Novo pedido</Button>
+            </AccessGuard>
           </div>
         </div>
 

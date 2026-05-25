@@ -6,7 +6,10 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { useStockAdjustForm } from '@/hooks/useStockAdjustForm'
+import { usePermissions } from '@/hooks/usePermissions'
 import { stockService } from '@/services/stockService'
+import { AccessGuard } from '@/components/layout/AccessGuard'
+import { Authority } from '@/models/permissions'
 import type { Stock, StockStatus } from '@/models/stock'
 
 const STATUS_OPTIONS = [
@@ -24,6 +27,8 @@ export function StockPage() {
   const [saving, setSaving] = useState(false)
 
   const { form, errors, setField, validate, toRequest, reset } = useStockAdjustForm()
+  const { canAccess } = usePermissions()
+  const canWrite = canAccess({ authorities: [Authority.STOCK_WRITE] })
 
   useEffect(() => {
     stockService
@@ -55,15 +60,15 @@ export function StockPage() {
     { header: 'Mínimo', render: s => s.minQuantity, width: '90px' },
     { header: 'Status', render: s => <Badge label={s.status} variant={statusVariant(s.status)} /> },
     { header: 'Atualizado', render: s => new Date(s.updatedAt).toLocaleDateString('pt-BR'), width: '120px' },
-    {
+    ...(canWrite ? [{
       header: 'Ações',
       width: '90px',
-      render: s => (
+      render: (s: Stock) => (
         <Button variant="secondary" onClick={() => openAdjust(s)} className="text-xs px-2 py-1">
           Ajustar
         </Button>
       ),
-    },
+    }] : []),
   ]
 
   return (

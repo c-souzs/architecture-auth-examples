@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/Button'
 import { Pagination } from '@/components/ui/Pagination'
 import { usePagination } from '@/hooks/usePagination'
 import { userService } from '@/services/userService'
-import { Role } from '@/models/permissions'
+import { usePermissions } from '@/hooks/usePermissions'
+import { AccessGuard } from '@/components/layout/AccessGuard'
+import { Role, Authority } from '@/models/permissions'
 import type { UserSummaryResponse } from '@/models/user-management'
 import type { Page } from '@/models/pagination'
 
@@ -14,6 +16,9 @@ const ALL_ROLES = Object.values(Role)
 
 export function UsersPage() {
   const { page, size, goToPage } = usePagination(0, 10)
+  const { canAccess } = usePermissions()
+  const canWrite = canAccess({ authorities: [Authority.USER_WRITE] })
+  const canDelete = canAccess({ authorities: [Authority.USER_DELETE] })
   const [data, setData] = useState<Page<UserSummaryResponse> | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -92,26 +97,30 @@ export function UsersPage() {
         </div>
       ),
     },
-    {
+    ...(canWrite || canDelete ? [{
       header: 'Ações',
       width: '200px',
-      render: u => (
+      render: (u: UserSummaryResponse) => (
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => openRolesModal(u)} className="text-xs px-2 py-1">
-            Roles
-          </Button>
-          <Button variant="secondary" onClick={() => toggleEnabled(u)} className="text-xs px-2 py-1">
-            {u.enabled ? 'Desativar' : 'Ativar'}
-          </Button>
-          <Button variant="secondary" onClick={() => toggleLocked(u)} className="text-xs px-2 py-1">
-            {u.locked ? 'Desbloquear' : 'Bloquear'}
-          </Button>
-          <Button variant="danger" onClick={() => disableUser(u)} className="text-xs px-2 py-1">
-            Remover
-          </Button>
+          <AccessGuard authorities={[Authority.USER_WRITE]} fallback={null}>
+            <Button variant="secondary" onClick={() => openRolesModal(u)} className="text-xs px-2 py-1">Roles</Button>
+          </AccessGuard>
+          <AccessGuard authorities={[Authority.USER_WRITE]} fallback={null}>
+            <Button variant="secondary" onClick={() => toggleEnabled(u)} className="text-xs px-2 py-1">
+              {u.enabled ? 'Desativar' : 'Ativar'}
+            </Button>
+          </AccessGuard>
+          <AccessGuard authorities={[Authority.USER_WRITE]} fallback={null}>
+            <Button variant="secondary" onClick={() => toggleLocked(u)} className="text-xs px-2 py-1">
+              {u.locked ? 'Desbloquear' : 'Bloquear'}
+            </Button>
+          </AccessGuard>
+          <AccessGuard authorities={[Authority.USER_DELETE]} fallback={null}>
+            <Button variant="danger" onClick={() => disableUser(u)} className="text-xs px-2 py-1">Remover</Button>
+          </AccessGuard>
         </div>
       ),
-    },
+    }] : []),
   ]
 
   return (

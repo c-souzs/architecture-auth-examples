@@ -6,7 +6,10 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { useProductForm } from '@/hooks/useProductForm'
+import { usePermissions } from '@/hooks/usePermissions'
 import { catalogService } from '@/services/catalogService'
+import { AccessGuard } from '@/components/layout/AccessGuard'
+import { Authority } from '@/models/permissions'
 import type { Category, Product, ProductStatus } from '@/models/catalog'
 
 const STATUS_OPTIONS = [
@@ -26,6 +29,9 @@ export function ProductsPage() {
   const [saving, setSaving] = useState(false)
 
   const { form, errors, setField, validate, toRequest, reset } = useProductForm()
+  const { canAccess } = usePermissions()
+  const canWrite = canAccess({ authorities: [Authority.PRODUCT_WRITE] })
+  const canDelete = canAccess({ authorities: [Authority.PRODUCT_DELETE] })
 
   useEffect(() => {
     catalogService.findAllCategories().then(setCategories)
@@ -88,16 +94,20 @@ export function ProductsPage() {
     { header: 'Categoria', render: p => p.categoryName },
     { header: 'Preço', render: p => `R$ ${Number(p.price).toFixed(2)}` },
     { header: 'Status', render: p => <Badge label={p.status} variant={statusVariant(p.status)} /> },
-    {
+    ...(canWrite || canDelete ? [{
       header: 'Ações',
       width: '120px',
-      render: p => (
+      render: (p: Product) => (
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => openEdit(p)} className="text-xs px-2 py-1">Editar</Button>
-          <Button variant="danger" onClick={() => handleDelete(p)} className="text-xs px-2 py-1">Excluir</Button>
+          <AccessGuard authorities={[Authority.PRODUCT_WRITE]} fallback={null}>
+            <Button variant="secondary" onClick={() => openEdit(p)} className="text-xs px-2 py-1">Editar</Button>
+          </AccessGuard>
+          <AccessGuard authorities={[Authority.PRODUCT_DELETE]} fallback={null}>
+            <Button variant="danger" onClick={() => handleDelete(p)} className="text-xs px-2 py-1">Excluir</Button>
+          </AccessGuard>
         </div>
       ),
-    },
+    }] : []),
   ]
 
   return (
@@ -105,7 +115,9 @@ export function ProductsPage() {
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold text-gray-900">Produtos</h1>
-          <Button onClick={openCreate}>Novo produto</Button>
+          <AccessGuard authorities={[Authority.PRODUCT_WRITE]} fallback={null}>
+            <Button onClick={openCreate}>Novo produto</Button>
+          </AccessGuard>
         </div>
 
         <div className="flex gap-3">

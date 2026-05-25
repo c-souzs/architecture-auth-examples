@@ -4,7 +4,10 @@ import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useCategoryForm } from '@/hooks/useCategoryForm'
+import { usePermissions } from '@/hooks/usePermissions'
 import { catalogService } from '@/services/catalogService'
+import { AccessGuard } from '@/components/layout/AccessGuard'
+import { Authority } from '@/models/permissions'
 import type { Category } from '@/models/catalog'
 
 export function CategoriesPage() {
@@ -15,6 +18,9 @@ export function CategoriesPage() {
   const [saving, setSaving] = useState(false)
 
   const { form, errors, setField, validate, reset } = useCategoryForm()
+  const { canAccess } = usePermissions()
+  const canWrite = canAccess({ authorities: [Authority.CATEGORY_WRITE] })
+  const canDelete = canAccess({ authorities: [Authority.CATEGORY_DELETE] })
 
   useEffect(() => {
     catalogService.findAllCategories().then(setCategories).finally(() => setLoading(false))
@@ -60,16 +66,20 @@ export function CategoriesPage() {
     { header: 'ID', render: c => c.id, width: '60px' },
     { header: 'Nome', render: c => c.name },
     { header: 'Descrição', render: c => c.description ?? '—' },
-    {
+    ...(canWrite || canDelete ? [{
       header: 'Ações',
       width: '120px',
-      render: c => (
+      render: (c: Category) => (
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => openEdit(c)} className="text-xs px-2 py-1">Editar</Button>
-          <Button variant="danger" onClick={() => handleDelete(c)} className="text-xs px-2 py-1">Excluir</Button>
+          <AccessGuard authorities={[Authority.CATEGORY_WRITE]} fallback={null}>
+            <Button variant="secondary" onClick={() => openEdit(c)} className="text-xs px-2 py-1">Editar</Button>
+          </AccessGuard>
+          <AccessGuard authorities={[Authority.CATEGORY_DELETE]} fallback={null}>
+            <Button variant="danger" onClick={() => handleDelete(c)} className="text-xs px-2 py-1">Excluir</Button>
+          </AccessGuard>
         </div>
       ),
-    },
+    }] : []),
   ]
 
   return (
@@ -77,7 +87,9 @@ export function CategoriesPage() {
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold text-gray-900">Categorias</h1>
-          <Button onClick={openCreate}>Nova categoria</Button>
+          <AccessGuard authorities={[Authority.CATEGORY_WRITE]} fallback={null}>
+            <Button onClick={openCreate}>Nova categoria</Button>
+          </AccessGuard>
         </div>
 
         <Table columns={columns} data={categories} loading={loading} keyExtractor={c => c.id} />
