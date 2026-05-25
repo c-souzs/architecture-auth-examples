@@ -1,13 +1,16 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/hooks/useAuth'
 import { AppLayout } from './AppLayout'
 
 export function ProtectedRoute() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, initializing } = useAuth()
   const location = useLocation()
 
+  if (initializing) return null
+
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />
+    const from = encodeURIComponent(location.pathname + location.search)
+    return <Navigate to={`/login?from=${from}`} replace />
   }
 
   return (

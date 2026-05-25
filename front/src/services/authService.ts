@@ -1,5 +1,5 @@
 import api from '@/lib/api'
-import type { LoginResponse, RefreshResponse } from '@/models/auth'
+import type { LoginResponse, RefreshResponse, UserInfo } from '@/models/auth'
 
 export const authService = {
   register: (body: { name: string; email: string; password: string }) =>
@@ -13,4 +13,7 @@ export const authService = {
 
   logout: () =>
     api.post('/auth/logout'),
+
+  me: () =>
+    api.get<UserInfo>('/auth/me').then(r => r.data),
 }
