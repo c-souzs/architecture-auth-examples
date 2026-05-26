@@ -1,15 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Table, type Column } from '@/components/ui/Table'
 import { Badge, statusVariant } from '@/components/ui/Badge'
-import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
-import { useOrderForm } from '@/hooks/useOrderForm'
-import { usePermissions } from '@/hooks/usePermissions'
 import { commerceService } from '@/services/commerceService'
-import { AccessGuard } from '@/components/layout/AccessGuard'
-import { Authority } from '@/models/permissions'
 import type { Order, OrderStatus } from '@/models/commerce'
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
@@ -29,41 +23,13 @@ export function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState('')
-  const [createModal, setCreateModal] = useState(false)
-  const [saving, setSaving] = useState(false)
-
-  const { form, errors, setField, setItemField, addItem, removeItem, validate, validateOwn, toRequest, toOwnRequest, reset } = useOrderForm()
-  const { canAccess } = usePermissions()
-  const isOwnView = canAccess({ authorities: [Authority.ORDER_OWN] }) && !canAccess({ authorities: [Authority.ORDER_READ] })
-  const canWrite = canAccess({ authorities: [Authority.ORDER_WRITE] })
-  const canManage = canAccess({ authorities: [Authority.ORDER_MANAGE] })
-  const canCancel = canAccess({ authorities: [Authority.ORDER_CANCEL] })
-  const canOwn = canAccess({ authorities: [Authority.ORDER_OWN] })
 
   useEffect(() => {
-    setLoading(true)
-    const params = { status: filterStatus as OrderStatus || undefined }
-    const fetch = isOwnView
-      ? commerceService.findMyOrders(params)
-      : commerceService.findAllOrders(params)
-    fetch.then(setOrders).finally(() => setLoading(false))
-  }, [isOwnView, filterStatus])
-
-  async function handleCreate() {
-    const valid = isOwnView ? validateOwn() : validate()
-    if (!valid) return
-    setSaving(true)
-    try {
-      const created = isOwnView
-        ? await commerceService.createMyOrder(toOwnRequest())
-        : await commerceService.createOrder(toRequest())
-      setOrders(prev => [created, ...prev])
-      setCreateModal(false)
-      reset()
-    } finally {
-      setSaving(false)
-    }
-  }
+    commerceService
+      .findAllOrders({ status: filterStatus as OrderStatus || undefined })
+      .then(setOrders)
+      .finally(() => setLoading(false))
+  }, [filterStatus])
 
   async function handleAdvance(order: Order) {
     const updated = await commerceService.advanceOrder(order.id)
@@ -72,9 +38,7 @@ export function OrdersPage() {
 
   async function handleCancel(order: Order) {
     if (!confirm(`Cancelar pedido #${order.id}?`)) return
-    const updated = isOwnView
-      ? await commerceService.cancelMyOrder(order.id)
-      : await commerceService.cancelOrder(order.id)
+    const updated = await commerceService.cancelOrder(order.id)
     setOrders(prev => prev.map(o => (o.id === updated.id ? updated : o)))
   }
 
@@ -86,119 +50,44 @@ export function OrdersPage() {
 
   const columns: Column<Order>[] = [
     { header: 'ID', render: o => `#${o.id}`, width: '60px' },
-    ...(!isOwnView ? [{ header: 'Cliente', render: (o: Order) => o.customerName }] : []),
+    { header: 'Cliente', render: o => o.customerName },
     { header: 'Status', render: o => <Badge label={o.status} variant={statusVariant(o.status)} /> },
     { header: 'Total', render: o => `R$ ${Number(o.totalAmount).toFixed(2)}`, width: '100px' },
     { header: 'Criado em', render: o => new Date(o.createdAt).toLocaleDateString('pt-BR'), width: '110px' },
-    ...(canWrite || canManage || canCancel || canOwn ? [{
+    {
       header: 'Ações',
       width: '200px',
-      render: (o: Order) => (
+      render: o => (
         <div className="flex gap-1.5 flex-wrap">
-          <AccessGuard authorities={[Authority.ORDER_MANAGE]} fallback={null}>
-            {ADVANCEABLE.includes(o.status) && (
-              <Button variant="secondary" onClick={() => handleAdvance(o)} className="text-xs px-2 py-1">Avançar</Button>
-            )}
-          </AccessGuard>
-          {(canCancel || canOwn) && CANCELLABLE.includes(o.status) && (
+          {ADVANCEABLE.includes(o.status) && (
+            <Button variant="secondary" onClick={() => handleAdvance(o)} className="text-xs px-2 py-1">Avançar</Button>
+          )}
+          {CANCELLABLE.includes(o.status) && (
             <Button variant="danger" onClick={() => handleCancel(o)} className="text-xs px-2 py-1">Cancelar</Button>
           )}
-          <AccessGuard authorities={[Authority.ORDER_MANAGE]} fallback={null}>
-            {o.status === 'DELIVERED' && (
-              <Button variant="secondary" onClick={() => handleRefund(o)} className="text-xs px-2 py-1">Estornar</Button>
-            )}
-          </AccessGuard>
+          {o.status === 'DELIVERED' && (
+            <Button variant="secondary" onClick={() => handleRefund(o)} className="text-xs px-2 py-1">Estornar</Button>
+          )}
         </div>
       ),
-    }] : []),
+    },
   ]
 
   return (
-    <>
-      <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-gray-900">Pedidos</h1>
-          <div className="flex gap-3">
-            <Select
-              id="filterStatus"
-              placeholder="Todos os status"
-              options={STATUS_OPTIONS}
-              value={filterStatus}
-              onChange={e => { setLoading(true); setFilterStatus(e.target.value) }}
-              className="w-52"
-            />
-            <AccessGuard authorities={[Authority.ORDER_WRITE, Authority.ORDER_OWN]} fallback={null}>
-              <Button onClick={() => { reset(); setCreateModal(true) }}>Novo pedido</Button>
-            </AccessGuard>
-          </div>
-        </div>
-
-        <Table columns={columns} data={orders} loading={loading} keyExtractor={o => o.id} />
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold text-gray-900">Pedidos</h1>
+        <Select
+          id="filterStatus"
+          placeholder="Todos os status"
+          options={STATUS_OPTIONS}
+          value={filterStatus}
+          onChange={e => { setLoading(true); setFilterStatus(e.target.value) }}
+          className="w-52"
+        />
       </div>
 
-      <Modal
-        open={createModal}
-        title="Novo pedido"
-        onClose={() => setCreateModal(false)}
-        size="lg"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setCreateModal(false)}>Cancelar</Button>
-            <Button onClick={handleCreate} disabled={saving}>{saving ? 'Criando...' : 'Criar pedido'}</Button>
-          </>
-        }
-      >
-        {!isOwnView && (
-          <Input
-            id="ocustomer"
-            label="ID do cliente"
-            type="number"
-            value={form.customerId}
-            onChange={e => setField('customerId', e.target.value)}
-            error={errors.customerId}
-          />
-        )}
-        <Input
-          id="oaddress"
-          label="ID do endereço de entrega"
-          type="number"
-          value={form.deliveryAddressId}
-          onChange={e => setField('deliveryAddressId', e.target.value)}
-          error={errors.deliveryAddressId}
-        />
-
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-700">Itens</span>
-            <Button variant="secondary" onClick={addItem} className="text-xs px-2 py-1">+ Item</Button>
-          </div>
-          {errors.items && <span className="text-xs text-red-600">{errors.items}</span>}
-          {form.items.map((item, i) => (
-            <div key={i} className="flex gap-2 items-end">
-              <Input
-                id={`oprod-${i}`}
-                label="ID do produto"
-                type="number"
-                value={item.productId}
-                onChange={e => setItemField(i, 'productId', e.target.value)}
-                className="flex-1"
-              />
-              <Input
-                id={`oqty-${i}`}
-                label="Qtd"
-                type="number"
-                min="1"
-                value={item.quantity}
-                onChange={e => setItemField(i, 'quantity', e.target.value)}
-                className="w-20"
-              />
-              {form.items.length > 1 && (
-                <Button variant="danger" onClick={() => removeItem(i)} className="text-xs px-2 py-1 mb-0.5">×</Button>
-              )}
-            </div>
-          ))}
-        </div>
-      </Modal>
-    </>
+      <Table columns={columns} data={orders} loading={loading} keyExtractor={o => o.id} />
+    </div>
   )
 }
