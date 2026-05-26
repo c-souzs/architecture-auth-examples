@@ -3,7 +3,10 @@ import { Table, type Column } from '@/components/ui/Table'
 import { Badge, statusVariant } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Select } from '@/components/ui/Select'
+import { usePermissions } from '@/hooks/usePermissions'
 import { commerceService } from '@/services/commerceService'
+import { AccessGuard } from '@/components/layout/AccessGuard'
+import { Authority } from '@/models/permissions'
 import type { Order, OrderStatus } from '@/models/commerce'
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
@@ -24,12 +27,20 @@ export function OrdersPage() {
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState('')
 
+  const { canAccess } = usePermissions()
+  const isOwnView = canAccess({ authorities: [Authority.ORDER_OWN] }) && !canAccess({ authorities: [Authority.ORDER_READ] })
+  const canManage = canAccess({ authorities: [Authority.ORDER_MANAGE] })
+  const canCancel = canAccess({ authorities: [Authority.ORDER_CANCEL] })
+  const canOwn = canAccess({ authorities: [Authority.ORDER_OWN] })
+
   useEffect(() => {
-    commerceService
-      .findAllOrders({ status: filterStatus as OrderStatus || undefined })
-      .then(setOrders)
-      .finally(() => setLoading(false))
-  }, [filterStatus])
+    setLoading(true)
+    const params = { status: filterStatus as OrderStatus || undefined }
+    const fetch = isOwnView
+      ? commerceService.findMyOrders(params)
+      : commerceService.findAllOrders(params)
+    fetch.then(setOrders).finally(() => setLoading(false))
+  }, [isOwnView, filterStatus])
 
   async function handleAdvance(order: Order) {
     const updated = await commerceService.advanceOrder(order.id)
@@ -38,7 +49,9 @@ export function OrdersPage() {
 
   async function handleCancel(order: Order) {
     if (!confirm(`Cancelar pedido #${order.id}?`)) return
-    const updated = await commerceService.cancelOrder(order.id)
+    const updated = isOwnView
+      ? await commerceService.cancelMyOrder(order.id)
+      : await commerceService.cancelOrder(order.id)
     setOrders(prev => prev.map(o => (o.id === updated.id ? updated : o)))
   }
 
@@ -50,27 +63,31 @@ export function OrdersPage() {
 
   const columns: Column<Order>[] = [
     { header: 'ID', render: o => `#${o.id}`, width: '60px' },
-    { header: 'Cliente', render: o => o.customerName },
+    ...(!isOwnView ? [{ header: 'Cliente', render: (o: Order) => o.customerName }] : []),
     { header: 'Status', render: o => <Badge label={o.status} variant={statusVariant(o.status)} /> },
     { header: 'Total', render: o => `R$ ${Number(o.totalAmount).toFixed(2)}`, width: '100px' },
     { header: 'Criado em', render: o => new Date(o.createdAt).toLocaleDateString('pt-BR'), width: '110px' },
-    {
+    ...(canManage || canCancel || canOwn ? [{
       header: 'Ações',
       width: '200px',
-      render: o => (
+      render: (o: Order) => (
         <div className="flex gap-1.5 flex-wrap">
-          {ADVANCEABLE.includes(o.status) && (
-            <Button variant="secondary" onClick={() => handleAdvance(o)} className="text-xs px-2 py-1">Avançar</Button>
-          )}
-          {CANCELLABLE.includes(o.status) && (
+          <AccessGuard authorities={[Authority.ORDER_MANAGE]} fallback={null}>
+            {ADVANCEABLE.includes(o.status) && (
+              <Button variant="secondary" onClick={() => handleAdvance(o)} className="text-xs px-2 py-1">Avançar</Button>
+            )}
+          </AccessGuard>
+          {(canCancel || canOwn) && CANCELLABLE.includes(o.status) && (
             <Button variant="danger" onClick={() => handleCancel(o)} className="text-xs px-2 py-1">Cancelar</Button>
           )}
-          {o.status === 'DELIVERED' && (
-            <Button variant="secondary" onClick={() => handleRefund(o)} className="text-xs px-2 py-1">Estornar</Button>
-          )}
+          <AccessGuard authorities={[Authority.ORDER_MANAGE]} fallback={null}>
+            {o.status === 'DELIVERED' && (
+              <Button variant="secondary" onClick={() => handleRefund(o)} className="text-xs px-2 py-1">Estornar</Button>
+            )}
+          </AccessGuard>
         </div>
       ),
-    },
+    }] : []),
   ]
 
   return (

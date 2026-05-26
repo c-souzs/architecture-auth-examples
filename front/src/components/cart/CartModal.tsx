@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { useCart } from '@/context/CartContext'
+import { usePermissions } from '@/hooks/usePermissions'
 import { customerService } from '@/services/customerService'
 import { commerceService } from '@/services/commerceService'
+import { Authority } from '@/models/permissions'
 import type { Customer, Address } from '@/models/customer'
 
 interface CartModalProps {
@@ -24,6 +27,13 @@ function formatAddress(a: Address): string {
 
 export function CartModal({ open, onClose }: CartModalProps) {
   const { items, removeItem, updateQuantity, clearCart } = useCart()
+  const { canAccess } = usePermissions()
+
+  const canWrite = canAccess({ authorities: [Authority.ORDER_WRITE] })
+  const canRead = canAccess({ authorities: [Authority.ORDER_READ] })
+  const canOwn = canAccess({ authorities: [Authority.ORDER_OWN] })
+  const isOwnView = canOwn && !canRead
+
   const [customers, setCustomers] = useState<Customer[]>([])
   const [addresses, setAddresses] = useState<Address[]>([])
   const [customerId, setCustomerId] = useState('')
@@ -32,37 +42,41 @@ export function CartModal({ open, onClose }: CartModalProps) {
   const [errors, setErrors] = useState<CartErrors>({})
 
   useEffect(() => {
-    if (open) customerService.findAll().then(setCustomers)
-  }, [open])
+    if (open && canWrite) customerService.findAll().then(setCustomers)
+  }, [open, canWrite])
 
   useEffect(() => {
-    if (!customerId) {
-      setAddresses([])
-      setAddressId('')
-      return
-    }
+    if (!customerId || !canWrite) { setAddresses([]); setAddressId(''); return }
     customerService.findAddresses(Number(customerId)).then(data => {
       setAddresses(data)
       setAddressId('')
     })
-  }, [customerId])
+  }, [customerId, canWrite])
 
   const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0)
+  const canFinalize = canWrite || isOwnView
 
   async function handleFinalize() {
     const next: CartErrors = {}
-    if (!customerId) next.customerId = 'Selecione um cliente'
-    if (!addressId) next.addressId = 'Selecione um endereço'
+    if (canWrite && !customerId) next.customerId = 'Selecione um cliente'
+    if (!addressId) next.addressId = isOwnView ? 'Informe o ID do endereço' : 'Selecione um endereço'
     setErrors(next)
     if (Object.keys(next).length > 0) return
 
     setSaving(true)
     try {
-      await commerceService.createOrder({
-        customerId: Number(customerId),
-        deliveryAddressId: Number(addressId),
-        items: items.map(i => ({ productId: i.productId, quantity: i.quantity })),
-      })
+      if (isOwnView) {
+        await commerceService.createMyOrder({
+          deliveryAddressId: Number(addressId),
+          items: items.map(i => ({ productId: i.productId, quantity: i.quantity })),
+        })
+      } else {
+        await commerceService.createOrder({
+          customerId: Number(customerId),
+          deliveryAddressId: Number(addressId),
+          items: items.map(i => ({ productId: i.productId, quantity: i.quantity })),
+        })
+      }
       clearCart()
       handleClose()
     } finally {
@@ -86,7 +100,7 @@ export function CartModal({ open, onClose }: CartModalProps) {
       footer={
         <>
           <Button variant="secondary" onClick={handleClose}>Fechar</Button>
-          <Button onClick={handleFinalize} disabled={saving || items.length === 0}>
+          <Button onClick={handleFinalize} disabled={saving || items.length === 0 || !canFinalize}>
             {saving ? 'Criando...' : 'Finalizar pedido'}
           </Button>
         </>
@@ -142,31 +156,48 @@ export function CartModal({ open, onClose }: CartModalProps) {
         </>
       )}
 
-      <Select
-        id="cart-customer"
-        label="Cliente"
-        placeholder="Selecione um cliente..."
-        options={customers.map(c => ({ value: String(c.id), label: `${c.userName} (${c.userEmail})` }))}
-        value={customerId}
-        onChange={e => {
-          setCustomerId(e.target.value)
-          setErrors(prev => ({ ...prev, customerId: undefined }))
-        }}
-        error={errors.customerId}
-      />
-      <Select
-        id="cart-address"
-        label="Endereço de entrega"
-        placeholder={customerId ? 'Selecione um endereço...' : 'Selecione um cliente primeiro'}
-        options={addresses.map(a => ({ value: String(a.id), label: formatAddress(a) }))}
-        value={addressId}
-        onChange={e => {
-          setAddressId(e.target.value)
-          setErrors(prev => ({ ...prev, addressId: undefined }))
-        }}
-        disabled={!customerId}
-        error={errors.addressId}
-      />
+      {canWrite && (
+        <Select
+          id="cart-customer"
+          label="Cliente"
+          placeholder="Selecione um cliente..."
+          options={customers.map(c => ({ value: String(c.id), label: `${c.userName} (${c.userEmail})` }))}
+          value={customerId}
+          onChange={e => {
+            setCustomerId(e.target.value)
+            setErrors(prev => ({ ...prev, customerId: undefined }))
+          }}
+          error={errors.customerId}
+        />
+      )}
+
+      {canWrite ? (
+        <Select
+          id="cart-address"
+          label="Endereço de entrega"
+          placeholder={customerId ? 'Selecione um endereço...' : 'Selecione um cliente primeiro'}
+          options={addresses.map(a => ({ value: String(a.id), label: formatAddress(a) }))}
+          value={addressId}
+          onChange={e => {
+            setAddressId(e.target.value)
+            setErrors(prev => ({ ...prev, addressId: undefined }))
+          }}
+          disabled={!customerId}
+          error={errors.addressId}
+        />
+      ) : isOwnView ? (
+        <Input
+          id="cart-address"
+          label="ID do endereço de entrega"
+          type="number"
+          value={addressId}
+          onChange={e => {
+            setAddressId(e.target.value)
+            setErrors(prev => ({ ...prev, addressId: undefined }))
+          }}
+          error={errors.addressId}
+        />
+      ) : null}
     </Modal>
   )
 }
