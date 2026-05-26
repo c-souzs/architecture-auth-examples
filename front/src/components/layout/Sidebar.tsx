@@ -9,7 +9,12 @@ const navItems = [
   { to: '/orders', label: 'Pedidos' },
 ]
 
-export function Sidebar() {
+interface SidebarProps {
+  cartCount: number
+  onCartClick: () => void
+}
+
+export function Sidebar({ cartCount, onCartClick }: SidebarProps) {
   return (
     <aside className="w-56 min-h-screen bg-gray-900 flex flex-col">
       <div className="px-5 py-5 border-b border-gray-700">
@@ -32,6 +37,19 @@ export function Sidebar() {
           </NavLink>
         ))}
       </nav>
+      <div className="px-2 pb-3 border-t border-gray-700 pt-2">
+        <button
+          onClick={onCartClick}
+          className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
+        >
+          <span>Carrinho</span>
+          {cartCount > 0 && (
+            <span className="bg-indigo-600 text-white text-xs font-medium px-2 py-0.5 rounded-full min-w-[20px] text-center">
+              {cartCount}
+            </span>
+          )}
+        </button>
+      </div>
     </aside>
   )
 }

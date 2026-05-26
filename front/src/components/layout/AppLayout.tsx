@@ -1,5 +1,8 @@
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Sidebar } from './Sidebar'
+import { CartProvider, useCart } from '@/context/CartContext'
+import { CartModal } from '@/components/cart/CartModal'
 
 interface AppLayoutProps {
   children: ReactNode
@@ -7,11 +10,23 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   return (
+    <CartProvider>
+      <AppLayoutInner>{children}</AppLayoutInner>
+    </CartProvider>
+  )
+}
+
+function AppLayoutInner({ children }: AppLayoutProps) {
+  const [cartOpen, setCartOpen] = useState(false)
+  const { items } = useCart()
+
+  return (
     <div className="flex min-h-screen max-h-screen bg-gray-50">
-      <Sidebar />
+      <Sidebar cartCount={items.length} onCartClick={() => setCartOpen(true)} />
       <main className="flex-1 overflow-y-auto p-8">
         {children}
       </main>
+      <CartModal open={cartOpen} onClose={() => setCartOpen(false)} />
     </div>
   )
 }

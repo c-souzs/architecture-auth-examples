@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { useProductForm } from '@/hooks/useProductForm'
 import { catalogService } from '@/services/catalogService'
+import { useCart } from '@/context/CartContext'
 import type { Category, Product, ProductStatus } from '@/models/catalog'
 
 const STATUS_OPTIONS = [
@@ -26,6 +27,7 @@ export function ProductsPage() {
   const [saving, setSaving] = useState(false)
 
   const { form, errors, setField, validate, toRequest, reset } = useProductForm()
+  const { addItem } = useCart()
 
   useEffect(() => {
     catalogService.findAllCategories().then(setCategories)
@@ -90,9 +92,18 @@ export function ProductsPage() {
     { header: 'Status', render: p => <Badge label={p.status} variant={statusVariant(p.status)} /> },
     {
       header: 'Ações',
-      width: '120px',
+      width: '190px',
       render: p => (
         <div className="flex gap-2">
+          {p.status === 'ACTIVE' && (
+            <Button
+              variant="secondary"
+              onClick={() => addItem({ id: p.id, name: p.name, price: Number(p.price) })}
+              className="text-xs px-2 py-1"
+            >
+              + Carrinho
+            </Button>
+          )}
           <Button variant="secondary" onClick={() => openEdit(p)} className="text-xs px-2 py-1">Editar</Button>
           <Button variant="danger" onClick={() => handleDelete(p)} className="text-xs px-2 py-1">Excluir</Button>
         </div>
