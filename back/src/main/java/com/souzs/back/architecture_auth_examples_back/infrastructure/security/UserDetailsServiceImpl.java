@@ -14,6 +14,7 @@ import java.util.List;
 // Usado exclusivamente pelo AuthenticationManager no login para verificar credenciais.
 // Authorities não são carregadas aqui — o SecurityContextHolder é populado pelo
 // JwtAuthFilter com os claims do AT, que é a fonte real para hasAuthority/hasRole.
+// Apenas existe, masnao é usado
 @Service
 @RequiredArgsConstructor
 public class UserDetailsServiceImpl implements UserDetailsService {

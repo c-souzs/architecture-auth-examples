@@ -74,6 +74,15 @@ public class JwtService {
     public UsernamePasswordAuthenticationToken getAuthentication(String token) {
         Claims claims = extractClaims(token);
 
+        // Para habilitar hasRole() nos @PreAuthorize, substitua pelo bloco abaixo.
+        // List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+        // claims.get("roles", List.class).stream()
+        //         .map(r -> new SimpleGrantedAuthority("ROLE_" + r))
+        //         .forEach(authorities::add);
+        // claims.get("authorities", List.class).stream()
+        //         .map(a -> new SimpleGrantedAuthority((String) a))
+        //         .forEach(authorities::add);
+
         List<SimpleGrantedAuthority> authorities = claims.get("authorities", List.class)
                 .stream()
                 .map(a -> new SimpleGrantedAuthority((String) a))

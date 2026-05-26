@@ -42,12 +42,17 @@ public class SecurityConfig {
                         .requestMatchers("/auth/**").permitAll()
                         .anyRequest().authenticated()
                 )
+                // Intercepta os erros de seguranca
                 .exceptionHandling(ex -> ex
+                        // Dispara sem token ou token invalido
                         .authenticationEntryPoint(authenticationEntryPoint())
+                        // Usuario autenticado, mas nao tem permisao
                         .accessDeniedHandler(accessDeniedHandler())
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                // Desativa o login pelo formulario do spring security
                 .formLogin(AbstractHttpConfigurer::disable)
+                // Desativa autenticacao Authorization Basic
                 .httpBasic(AbstractHttpConfigurer::disable);
 
         return http.build();
