@@ -1,10 +1,10 @@
 package com.souzs.resource.domain.commerce.service;
 
-import com.souzs.auth.architecture_auth_examples_back.domain.commerce.dto.DeliveryResponse;
-import com.souzs.auth.architecture_auth_examples_back.domain.commerce.dto.DeliveryShipRequest;
-import com.souzs.auth.architecture_auth_examples_back.domain.commerce.entity.Delivery;
-import com.souzs.auth.architecture_auth_examples_back.domain.commerce.entity.DeliveryStatus;
-import com.souzs.auth.architecture_auth_examples_back.domain.commerce.entity.OrderStatus;
+import com.souzs.resource.domain.commerce.dto.DeliveryResponse;
+import com.souzs.resource.domain.commerce.dto.DeliveryShipRequest;
+import com.souzs.resource.domain.commerce.entity.Delivery;
+import com.souzs.resource.domain.commerce.entity.DeliveryStatus;
+import com.souzs.resource.domain.commerce.entity.OrderStatus;
 import com.souzs.resource.domain.commerce.repository.DeliveryRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;

@@ -1,8 +1,8 @@
 package com.souzs.resource.domain.commerce.controller;
 
-import com.souzs.auth.architecture_auth_examples_back.domain.commerce.dto.DeliveryResponse;
-import com.souzs.auth.architecture_auth_examples_back.domain.commerce.dto.DeliveryShipRequest;
-import com.souzs.auth.architecture_auth_examples_back.domain.commerce.service.DeliveryService;
+import com.souzs.resource.domain.commerce.dto.DeliveryResponse;
+import com.souzs.resource.domain.commerce.dto.DeliveryShipRequest;
+import com.souzs.resource.domain.commerce.service.DeliveryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;

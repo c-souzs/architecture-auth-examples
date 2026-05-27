@@ -1,10 +1,10 @@
 package com.souzs.resource.domain.stock.service;
 
-import com.souzs.auth.architecture_auth_examples_back.domain.stock.dto.StockAdjustRequest;
-import com.souzs.auth.architecture_auth_examples_back.domain.stock.dto.StockResponse;
-import com.souzs.auth.architecture_auth_examples_back.domain.stock.dto.StockValidateRequest;
-import com.souzs.auth.architecture_auth_examples_back.domain.stock.entity.Stock;
-import com.souzs.auth.architecture_auth_examples_back.domain.stock.entity.StockStatus;
+import com.souzs.resource.domain.stock.dto.StockAdjustRequest;
+import com.souzs.resource.domain.stock.dto.StockResponse;
+import com.souzs.resource.domain.stock.dto.StockValidateRequest;
+import com.souzs.resource.domain.stock.entity.Stock;
+import com.souzs.resource.domain.stock.entity.StockStatus;
 import com.souzs.resource.domain.stock.repository.StockRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;

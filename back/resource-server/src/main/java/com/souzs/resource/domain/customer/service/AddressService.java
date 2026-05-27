@@ -1,9 +1,9 @@
 package com.souzs.resource.domain.customer.service;
 
-import com.souzs.auth.architecture_auth_examples_back.domain.customer.dto.AddressRequest;
-import com.souzs.auth.architecture_auth_examples_back.domain.customer.dto.AddressResponse;
-import com.souzs.auth.architecture_auth_examples_back.domain.customer.entity.Address;
-import com.souzs.auth.architecture_auth_examples_back.domain.customer.entity.Customer;
+import com.souzs.resource.domain.customer.dto.AddressRequest;
+import com.souzs.resource.domain.customer.dto.AddressResponse;
+import com.souzs.resource.domain.customer.entity.Address;
+import com.souzs.resource.domain.customer.entity.Customer;
 import com.souzs.resource.domain.customer.repository.AddressRepository;
 import com.souzs.resource.domain.customer.repository.CustomerRepository;
 import jakarta.persistence.EntityNotFoundException;

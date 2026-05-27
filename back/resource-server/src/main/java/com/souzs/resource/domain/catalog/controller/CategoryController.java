@@ -1,8 +1,8 @@
 package com.souzs.resource.domain.catalog.controller;
 
-import com.souzs.auth.architecture_auth_examples_back.domain.catalog.dto.CategoryRequest;
-import com.souzs.auth.architecture_auth_examples_back.domain.catalog.dto.CategoryResponse;
-import com.souzs.auth.architecture_auth_examples_back.domain.catalog.service.CategoryService;
+import com.souzs.resource.domain.catalog.dto.CategoryRequest;
+import com.souzs.resource.domain.catalog.dto.CategoryResponse;
+import com.souzs.resource.domain.catalog.service.CategoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

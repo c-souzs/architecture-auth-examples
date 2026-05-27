@@ -1,8 +1,8 @@
 package com.souzs.resource.domain.catalog.service;
 
-import com.souzs.auth.architecture_auth_examples_back.domain.catalog.dto.CategoryRequest;
-import com.souzs.auth.architecture_auth_examples_back.domain.catalog.dto.CategoryResponse;
-import com.souzs.auth.architecture_auth_examples_back.domain.catalog.entity.Category;
+import com.souzs.resource.domain.catalog.dto.CategoryRequest;
+import com.souzs.resource.domain.catalog.dto.CategoryResponse;
+import com.souzs.resource.domain.catalog.entity.Category;
 import com.souzs.resource.domain.catalog.repository.CategoryRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;

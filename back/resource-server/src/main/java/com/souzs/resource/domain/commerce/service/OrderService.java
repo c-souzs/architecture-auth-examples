@@ -1,12 +1,12 @@
 package com.souzs.resource.domain.commerce.service;
 
-import com.souzs.auth.architecture_auth_examples_back.domain.catalog.entity.Product;
-import com.souzs.auth.architecture_auth_examples_back.domain.catalog.entity.ProductStatus;
-import com.souzs.auth.architecture_auth_examples_back.domain.catalog.repository.ProductRepository;
-import com.souzs.auth.architecture_auth_examples_back.domain.commerce.dto.OrderItemRequest;
-import com.souzs.auth.architecture_auth_examples_back.domain.commerce.dto.OrderRequest;
-import com.souzs.auth.architecture_auth_examples_back.domain.commerce.dto.OrderResponse;
-import com.souzs.auth.architecture_auth_examples_back.domain.commerce.entity.*;
+import com.souzs.resource.domain.catalog.entity.Product;
+import com.souzs.resource.domain.catalog.entity.ProductStatus;
+import com.souzs.resource.domain.catalog.repository.ProductRepository;
+import com.souzs.resource.domain.commerce.dto.OrderItemRequest;
+import com.souzs.resource.domain.commerce.dto.OrderRequest;
+import com.souzs.resource.domain.commerce.dto.OrderResponse;
+import com.souzs.resource.domain.commerce.entity.*;
 import com.souzs.resource.domain.commerce.repository.OrderRepository;
 import com.souzs.resource.domain.customer.entity.Address;
 import com.souzs.resource.domain.customer.entity.Customer;

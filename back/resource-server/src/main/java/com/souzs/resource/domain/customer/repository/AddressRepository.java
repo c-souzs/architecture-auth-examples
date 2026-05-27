@@ -1,6 +1,6 @@
 package com.souzs.resource.domain.customer.repository;
 
-import com.souzs.auth.architecture_auth_examples_back.domain.customer.entity.Address;
+import com.souzs.resource.domain.customer.entity.Address;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

@@ -1,8 +1,8 @@
 package com.souzs.resource.domain.customer.controller;
 
-import com.souzs.auth.architecture_auth_examples_back.domain.customer.dto.AddressRequest;
-import com.souzs.auth.architecture_auth_examples_back.domain.customer.dto.AddressResponse;
-import com.souzs.auth.architecture_auth_examples_back.domain.customer.service.AddressService;
+import com.souzs.resource.domain.customer.dto.AddressRequest;
+import com.souzs.resource.domain.customer.dto.AddressResponse;
+import com.souzs.resource.domain.customer.service.AddressService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

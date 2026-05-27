@@ -1,6 +1,6 @@
 package com.souzs.resource.domain.commerce.entity;
 
-import com.souzs.auth.architecture_auth_examples_back.domain.catalog.entity.Product;
+import com.souzs.resource.domain.catalog.entity.Product;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

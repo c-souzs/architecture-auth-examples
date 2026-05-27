@@ -1,10 +1,10 @@
 package com.souzs.resource.domain.catalog.service;
 
-import com.souzs.auth.architecture_auth_examples_back.domain.catalog.dto.ProductRequest;
-import com.souzs.auth.architecture_auth_examples_back.domain.catalog.dto.ProductResponse;
-import com.souzs.auth.architecture_auth_examples_back.domain.catalog.entity.Category;
-import com.souzs.auth.architecture_auth_examples_back.domain.catalog.entity.Product;
-import com.souzs.auth.architecture_auth_examples_back.domain.catalog.entity.ProductStatus;
+import com.souzs.resource.domain.catalog.dto.ProductRequest;
+import com.souzs.resource.domain.catalog.dto.ProductResponse;
+import com.souzs.resource.domain.catalog.entity.Category;
+import com.souzs.resource.domain.catalog.entity.Product;
+import com.souzs.resource.domain.catalog.entity.ProductStatus;
 import com.souzs.resource.domain.catalog.repository.CategoryRepository;
 import com.souzs.resource.domain.catalog.repository.ProductRepository;
 import jakarta.persistence.EntityNotFoundException;

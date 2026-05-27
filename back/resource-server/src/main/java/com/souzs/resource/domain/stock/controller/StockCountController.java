@@ -1,8 +1,8 @@
 package com.souzs.resource.domain.stock.controller;
 
-import com.souzs.auth.architecture_auth_examples_back.domain.stock.dto.StockCountRequest;
-import com.souzs.auth.architecture_auth_examples_back.domain.stock.dto.StockCountResponse;
-import com.souzs.auth.architecture_auth_examples_back.domain.stock.service.StockCountService;
+import com.souzs.resource.domain.stock.dto.StockCountRequest;
+import com.souzs.resource.domain.stock.dto.StockCountResponse;
+import com.souzs.resource.domain.stock.service.StockCountService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

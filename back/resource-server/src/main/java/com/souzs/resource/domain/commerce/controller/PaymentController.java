@@ -1,8 +1,8 @@
 package com.souzs.resource.domain.commerce.controller;
 
-import com.souzs.auth.architecture_auth_examples_back.domain.commerce.dto.PaymentRequest;
-import com.souzs.auth.architecture_auth_examples_back.domain.commerce.dto.PaymentResponse;
-import com.souzs.auth.architecture_auth_examples_back.domain.commerce.service.PaymentService;
+import com.souzs.resource.domain.commerce.dto.PaymentRequest;
+import com.souzs.resource.domain.commerce.dto.PaymentResponse;
+import com.souzs.resource.domain.commerce.service.PaymentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

@@ -1,11 +1,11 @@
 package com.souzs.resource.domain.commerce.service;
 
-import com.souzs.auth.architecture_auth_examples_back.domain.commerce.dto.PaymentRequest;
-import com.souzs.auth.architecture_auth_examples_back.domain.commerce.dto.PaymentResponse;
-import com.souzs.auth.architecture_auth_examples_back.domain.commerce.entity.Order;
-import com.souzs.auth.architecture_auth_examples_back.domain.commerce.entity.OrderStatus;
-import com.souzs.auth.architecture_auth_examples_back.domain.commerce.entity.Payment;
-import com.souzs.auth.architecture_auth_examples_back.domain.commerce.entity.PaymentStatus;
+import com.souzs.resource.domain.commerce.dto.PaymentRequest;
+import com.souzs.resource.domain.commerce.dto.PaymentResponse;
+import com.souzs.resource.domain.commerce.entity.Order;
+import com.souzs.resource.domain.commerce.entity.OrderStatus;
+import com.souzs.resource.domain.commerce.entity.Payment;
+import com.souzs.resource.domain.commerce.entity.PaymentStatus;
 import com.souzs.resource.domain.commerce.repository.OrderRepository;
 import com.souzs.resource.domain.commerce.repository.PaymentRepository;
 import jakarta.persistence.EntityNotFoundException;
