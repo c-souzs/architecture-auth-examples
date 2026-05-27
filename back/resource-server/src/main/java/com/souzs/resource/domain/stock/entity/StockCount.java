@@ -1,6 +1,5 @@
 package com.souzs.resource.domain.stock.entity;
 
-import com.souzs.auth.architecture_auth_examples_back.domain.auth.entity.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,9 +22,8 @@ public class StockCount {
     @JoinColumn(name = "stock_id", nullable = false)
     private Stock stock;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "counted_by_user_id", nullable = false)
-    private User countedBy;
+    @Column(name = "counted_by_user_id", nullable = false, updatable = false)
+    private Long countedByUserId;
 
     @Column(nullable = false)
     private Integer countedQuantity;

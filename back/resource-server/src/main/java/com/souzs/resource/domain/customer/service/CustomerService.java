@@ -1,10 +1,8 @@
 package com.souzs.resource.domain.customer.service;
 
-import com.souzs.auth.architecture_auth_examples_back.domain.auth.entity.User;
-import com.souzs.auth.architecture_auth_examples_back.domain.auth.repository.UserRepository;
-import com.souzs.auth.architecture_auth_examples_back.domain.customer.dto.CustomerRequest;
-import com.souzs.auth.architecture_auth_examples_back.domain.customer.dto.CustomerResponse;
-import com.souzs.auth.architecture_auth_examples_back.domain.customer.entity.Customer;
+import com.souzs.resource.domain.customer.dto.CustomerRequest;
+import com.souzs.resource.domain.customer.dto.CustomerResponse;
+import com.souzs.resource.domain.customer.entity.Customer;
 import com.souzs.resource.domain.customer.repository.CustomerRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +17,6 @@ import java.util.List;
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
-    private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
     public List<CustomerResponse> findAll() {
@@ -46,16 +43,11 @@ public class CustomerService {
         if (customerRepository.existsByCpf(request.cpf())) {
             throw new IllegalStateException("CPF já cadastrado: " + request.cpf());
         }
-
-        User user = userRepository.findById(request.userId())
-                .orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado: " + request.userId()));
-
-        if (customerRepository.findByUserId(user.getId()).isPresent()) {
+        if (customerRepository.findByUserId(request.userId()).isPresent()) {
             throw new IllegalStateException("Usuário já possui um customer vinculado");
         }
-
         Customer customer = new Customer();
-        customer.setUser(user);
+        customer.setUserId(request.userId());
         customer.setCpf(request.cpf());
         customer.setPhone(request.phone());
         return CustomerResponse.from(customerRepository.save(customer));
@@ -65,7 +57,6 @@ public class CustomerService {
     public CustomerResponse update(Long id, CustomerRequest request) {
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Customer não encontrado: " + id));
-
         customer.setPhone(request.phone());
         return CustomerResponse.from(customer);
     }
