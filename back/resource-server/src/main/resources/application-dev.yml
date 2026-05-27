@@ -17,6 +17,6 @@ cors:
 logging:
   level:
     root: INFO
-    com.souzs.back: DEBUG
+    com.souzs.resource: DEBUG
     org.hibernate.SQL: DEBUG
     org.flywaydb: DEBUG
