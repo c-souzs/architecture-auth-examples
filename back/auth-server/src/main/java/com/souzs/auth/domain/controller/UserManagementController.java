@@ -1,9 +1,9 @@
 package com.souzs.auth.domain.controller;
 
-import com.souzs.auth.architecture_auth_examples_back.domain.auth.dto.AssignRolesRequest;
-import com.souzs.auth.architecture_auth_examples_back.domain.auth.dto.UserStatusRequest;
-import com.souzs.auth.architecture_auth_examples_back.domain.auth.dto.UserSummaryResponse;
-import com.souzs.auth.architecture_auth_examples_back.domain.auth.service.UserManagementService;
+import com.souzs.auth.domain.dto.AssignRolesRequest;
+import com.souzs.auth.domain.dto.UserStatusRequest;
+import com.souzs.auth.domain.dto.UserSummaryResponse;
+import com.souzs.auth.domain.service.UserManagementService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;

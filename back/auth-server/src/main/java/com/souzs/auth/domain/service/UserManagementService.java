@@ -1,12 +1,12 @@
 package com.souzs.auth.domain.service;
 
-import com.souzs.auth.architecture_auth_examples_back.domain.auth.dto.AssignRolesRequest;
-import com.souzs.auth.architecture_auth_examples_back.domain.auth.dto.UserStatusRequest;
-import com.souzs.auth.architecture_auth_examples_back.domain.auth.dto.UserSummaryResponse;
-import com.souzs.auth.architecture_auth_examples_back.domain.auth.entity.Role;
-import com.souzs.auth.architecture_auth_examples_back.domain.auth.entity.User;
-import com.souzs.auth.domain.auth.repository.RoleRepository;
-import com.souzs.auth.domain.auth.repository.UserRepository;
+import com.souzs.auth.domain.dto.AssignRolesRequest;
+import com.souzs.auth.domain.dto.UserStatusRequest;
+import com.souzs.auth.domain.dto.UserSummaryResponse;
+import com.souzs.auth.domain.entity.Role;
+import com.souzs.auth.domain.entity.User;
+import com.souzs.auth.domain.repository.RoleRepository;
+import com.souzs.auth.domain.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;

@@ -1,8 +1,8 @@
 package com.souzs.auth.domain.dto;
 
-import com.souzs.auth.domain.auth.entity.Authority;
-import com.souzs.auth.domain.auth.entity.Role;
-import com.souzs.auth.domain.auth.entity.User;
+import com.souzs.auth.domain.entity.Authority;
+import com.souzs.auth.domain.entity.Role;
+import com.souzs.auth.domain.entity.User;
 
 import java.time.Instant;
 import java.util.Set;
