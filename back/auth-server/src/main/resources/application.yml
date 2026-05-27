@@ -28,3 +28,6 @@ cors:
 rsa:
   private-key: classpath:keys/private.pem
   public-key: classpath:keys/public.pem
+
+jwt:
+  expiration-ms: 900000

@@ -1,6 +1,5 @@
 package com.souzs.auth.domain.entity;
 
-import com.souzs.auth.domain.auth.entity.Authority;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
