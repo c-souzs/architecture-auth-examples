@@ -1,0 +1,22 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5433/auth_examples_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+cors:
+  allowed-origins:
+    - http://localhost:5173
+
+logging:
+  level:
+    root: INFO
+    com.souzs.back: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.flywaydb: DEBUG
