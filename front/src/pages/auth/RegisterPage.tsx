@@ -1,8 +1,43 @@
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { Link } from 'react-router-dom'
+import { useAuth } from '@/hooks/useAuth'
 
 export function RegisterPage() {
+  const { register } = useAuth()
+  const navigate = useNavigate()
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+
+    if (password.length < 8) {
+      setError('Senha deve ter no mínimo 8 caracteres')
+      return
+    }
+    if (password !== confirmPassword) {
+      setError('As senhas não coincidem')
+      return
+    }
+
+    setLoading(true)
+    try {
+      await register(name, email, password)
+      navigate('/products', { replace: true })
+    } catch {
+      setError('Erro ao criar conta. Verifique os dados e tente novamente.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-md bg-white rounded-2xl shadow p-8 flex flex-col gap-6">
@@ -11,13 +46,18 @@ export function RegisterPage() {
           <p className="text-sm text-gray-500 mt-1">Preencha seus dados para se cadastrar</p>
         </div>
 
-        <form className="flex flex-col gap-4">
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+          {error && (
+            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 text-center">{error}</p>
+          )}
           <Input
             id="name"
             label="Nome"
             type="text"
             placeholder="Seu nome completo"
             autoComplete="name"
+            value={name}
+            onChange={e => setName(e.target.value)}
           />
           <Input
             id="email"
@@ -25,13 +65,8 @@ export function RegisterPage() {
             type="email"
             placeholder="seu@email.com"
             autoComplete="email"
-          />
-          <Input
-            id="cpf"
-            label="CPF"
-            type="text"
-            placeholder="00000000000"
-            maxLength={11}
+            value={email}
+            onChange={e => setEmail(e.target.value)}
           />
           <Input
             id="password"
@@ -39,6 +74,8 @@ export function RegisterPage() {
             type="password"
             placeholder="••••••••"
             autoComplete="new-password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
           />
           <Input
             id="confirmPassword"
@@ -46,9 +83,11 @@ export function RegisterPage() {
             type="password"
             placeholder="••••••••"
             autoComplete="new-password"
+            value={confirmPassword}
+            onChange={e => setConfirmPassword(e.target.value)}
           />
-          <Button type="submit" fullWidth>
-            Criar conta
+          <Button type="submit" fullWidth disabled={loading}>
+            {loading ? 'Criando...' : 'Criar conta'}
           </Button>
         </form>
 

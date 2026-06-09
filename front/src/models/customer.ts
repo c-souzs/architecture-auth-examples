@@ -10,10 +10,8 @@ export interface Address {
 }
 
 export interface Customer {
-  id: number;
-  cpf: string;
-  phone: string;
-  userId: number;
-  userName: string;
-  userEmail: string;
+  id: number
+  cpf: string
+  phone?: string
+  userId: number
 }

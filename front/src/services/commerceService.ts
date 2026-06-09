@@ -1,7 +1,16 @@
-import api from '@/lib/api'
+import { resourceApi as api } from '@/lib/api'
 import type { Order, OrderStatus, PaymentMethod } from '@/models/commerce'
 
 export const commerceService = {
+  findMyOrders: (params?: { status?: OrderStatus }) =>
+    api.get<Order[]>('/orders/my', { params }).then(r => r.data),
+
+  createMyOrder: (body: { deliveryAddressId: number; items: { productId: number; quantity: number }[] }) =>
+    api.post<Order>('/orders/my', body).then(r => r.data),
+
+  cancelMyOrder: (id: number) =>
+    api.post<Order>(`/orders/my/${id}/cancel`).then(r => r.data),
+
   findAllOrders: (params?: { customerId?: number; status?: OrderStatus }) =>
     api.get<Order[]>('/orders', { params }).then(r => r.data),
 
@@ -21,11 +30,11 @@ export const commerceService = {
     api.post<Order>(`/orders/${id}/refund`).then(r => r.data),
 
   confirmPayment: (orderId: number, body: { method: PaymentMethod; transactionId?: string }) =>
-    api.post(`/orders/${orderId}/payment`, body).then(r => r.data),
+    api.post(`/orders/${orderId}/payment/confirm`, body).then(r => r.data),
 
   shipOrder: (orderId: number, body: { trackingCode?: string; estimatedDelivery?: string }) =>
-    api.put(`/orders/${orderId}/delivery/ship`, body).then(r => r.data),
+    api.post(`/orders/${orderId}/delivery/ship`, body).then(r => r.data),
 
   deliverOrder: (orderId: number) =>
-    api.put(`/orders/${orderId}/delivery/deliver`).then(r => r.data),
+    api.post(`/orders/${orderId}/delivery/deliver`).then(r => r.data),
 }

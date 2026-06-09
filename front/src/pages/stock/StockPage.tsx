@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { useStockAdjustForm } from '@/hooks/useStockAdjustForm'
+import { usePermissions } from '@/hooks/usePermissions'
 import { stockService } from '@/services/stockService'
+import { Authority } from '@/models/permissions'
 import type { Stock, StockStatus } from '@/models/stock'
 
 const STATUS_OPTIONS = [
@@ -17,10 +19,19 @@ const STATUS_OPTIONS = [
 ]
 
 export function StockPage() {
+  const { canAccess } = usePermissions()
+  const canAdjust = canAccess({ authorities: [Authority.STOCK_WRITE] })
+  const canCount = canAccess({ authorities: [Authority.STOCK_COUNT] })
+  const canValidate = canAccess({ authorities: [Authority.STOCK_VALIDATE] })
+
   const [stocks, setStocks] = useState<Stock[]>([])
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState('')
   const [adjustModal, setAdjustModal] = useState<Stock | null>(null)
+  const [countModal, setCountModal] = useState<Stock | null>(null)
+  const [validateModal, setValidateModal] = useState<Stock | null>(null)
+  const [countedQty, setCountedQty] = useState('')
+  const [resolvedQty, setResolvedQty] = useState('')
   const [saving, setSaving] = useState(false)
 
   const { form, errors, setField, validate, toRequest, reset } = useStockAdjustForm()
@@ -49,6 +60,33 @@ export function StockPage() {
     }
   }
 
+  async function handleCount() {
+    if (!countModal) return
+    setSaving(true)
+    try {
+      await stockService.createCount(countModal.id, { countedQuantity: Number(countedQty) })
+      const updated = await stockService.findAll({ status: filterStatus as StockStatus || undefined })
+      setStocks(updated)
+      setCountModal(null)
+      setCountedQty('')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleValidate() {
+    if (!validateModal) return
+    setSaving(true)
+    try {
+      const updated = await stockService.validate(validateModal.id, { resolvedQuantity: Number(resolvedQty) })
+      setStocks(prev => prev.map(s => (s.id === updated.id ? updated : s)))
+      setValidateModal(null)
+      setResolvedQty('')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const columns: Column<Stock>[] = [
     { header: 'Produto', render: s => s.productName },
     { header: 'Quantidade', render: s => s.quantity, width: '110px' },
@@ -57,11 +95,25 @@ export function StockPage() {
     { header: 'Atualizado', render: s => new Date(s.updatedAt).toLocaleDateString('pt-BR'), width: '120px' },
     {
       header: 'Ações',
-      width: '90px',
+      width: '220px',
       render: s => (
-        <Button variant="secondary" onClick={() => openAdjust(s)} className="text-xs px-2 py-1">
-          Ajustar
-        </Button>
+        <div className="flex gap-1.5">
+          {canAdjust && (
+            <Button variant="secondary" onClick={() => openAdjust(s)} className="text-xs px-2 py-1">
+              Ajustar
+            </Button>
+          )}
+          {canCount && s.status === 'PENDING_COUNT' && (
+            <Button variant="secondary" onClick={() => { setCountModal(s); setCountedQty('') }} className="text-xs px-2 py-1">
+              Contar
+            </Button>
+          )}
+          {canValidate && s.status === 'DIVERGENT' && (
+            <Button variant="secondary" onClick={() => { setValidateModal(s); setResolvedQty('') }} className="text-xs px-2 py-1">
+              Validar
+            </Button>
+          )}
+        </div>
       ),
     },
   ]
@@ -112,6 +164,52 @@ export function StockPage() {
           value={form.minQuantity}
           onChange={e => setField('minQuantity', e.target.value)}
           error={errors.minQuantity}
+        />
+      </Modal>
+
+      <Modal
+        open={!!countModal}
+        title={`Registrar contagem — ${countModal?.productName}`}
+        onClose={() => setCountModal(null)}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setCountModal(null)}>Cancelar</Button>
+            <Button onClick={handleCount} disabled={saving || !countedQty}>
+              {saving ? 'Salvando...' : 'Registrar'}
+            </Button>
+          </>
+        }
+      >
+        <Input
+          id="countedQty"
+          label="Quantidade contada"
+          type="number"
+          min="0"
+          value={countedQty}
+          onChange={e => setCountedQty(e.target.value)}
+        />
+      </Modal>
+
+      <Modal
+        open={!!validateModal}
+        title={`Validar divergência — ${validateModal?.productName}`}
+        onClose={() => setValidateModal(null)}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setValidateModal(null)}>Cancelar</Button>
+            <Button onClick={handleValidate} disabled={saving || !resolvedQty}>
+              {saving ? 'Salvando...' : 'Validar'}
+            </Button>
+          </>
+        }
+      >
+        <Input
+          id="resolvedQty"
+          label="Quantidade resolvida"
+          type="number"
+          min="0"
+          value={resolvedQty}
+          onChange={e => setResolvedQty(e.target.value)}
         />
       </Modal>
     </>

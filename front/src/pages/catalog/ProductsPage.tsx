@@ -5,10 +5,13 @@ import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
+import { AccessGuard } from '@/components/auth/AccessGuard'
 import { useProductForm } from '@/hooks/useProductForm'
+import { usePermissions } from '@/hooks/usePermissions'
 import { catalogService } from '@/services/catalogService'
 import { useCart } from '@/context/CartContext'
-import type { Category, Product, ProductStatus } from '@/models/catalog'
+import { Authority } from '@/models/permissions'
+import type { Category, Product, ProductCatalog, ProductStatus } from '@/models/catalog'
 
 const STATUS_OPTIONS = [
   { value: 'ACTIVE', label: 'Ativo' },
@@ -17,7 +20,18 @@ const STATUS_OPTIONS = [
 ]
 
 export function ProductsPage() {
+  const { canAccess } = usePermissions()
+  const { addItem } = useCart()
+
+  const canRead = canAccess({ authorities: [Authority.PRODUCT_READ] })
+  const canWrite = canAccess({ authorities: [Authority.PRODUCT_WRITE] })
+  const canDelete = canAccess({ authorities: [Authority.PRODUCT_DELETE] })
+  const canAddToCart = canAccess({ authorities: [Authority.ORDER_WRITE, Authority.ORDER_OWN] })
+
+  const isCatalog = !canRead
+
   const [products, setProducts] = useState<Product[]>([])
+  const [catalog, setCatalog] = useState<ProductCatalog[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [filterCategory, setFilterCategory] = useState('')
@@ -27,19 +41,23 @@ export function ProductsPage() {
   const [saving, setSaving] = useState(false)
 
   const { form, errors, setField, validate, toRequest, reset } = useProductForm()
-  const { addItem } = useCart()
 
   useEffect(() => {
-    catalogService.findAllCategories().then(setCategories)
-  }, [])
+    if (isCatalog) {
+      catalogService.findCatalogProducts().then(setCatalog).finally(() => setLoading(false))
+    } else {
+      catalogService.findAllCategories().then(setCategories)
+    }
+  }, [isCatalog])
 
   useEffect(() => {
+    if (isCatalog) return
     const params = {
       categoryId: filterCategory ? Number(filterCategory) : undefined,
       status: filterStatus as ProductStatus || undefined,
     }
     catalogService.findAllProducts(params).then(setProducts).finally(() => setLoading(false))
-  }, [filterCategory, filterStatus])
+  }, [isCatalog, filterCategory, filterStatus])
 
   function openCreate() {
     reset()
@@ -85,6 +103,34 @@ export function ProductsPage() {
 
   const categoryOptions = categories.map(c => ({ value: String(c.id), label: c.name }))
 
+  if (isCatalog) {
+    const catalogColumns: Column<ProductCatalog>[] = [
+      { header: 'Nome', render: p => p.name },
+      { header: 'Categoria', render: p => p.categoryName },
+      { header: 'Preço', render: p => `R$ ${Number(p.price).toFixed(2)}` },
+      {
+        header: 'Ações',
+        width: '120px',
+        render: p => canAddToCart ? (
+          <Button
+            variant="secondary"
+            onClick={() => addItem({ id: p.id, name: p.name, price: Number(p.price) })}
+            className="text-xs px-2 py-1"
+          >
+            + Carrinho
+          </Button>
+        ) : null,
+      },
+    ]
+
+    return (
+      <div className="flex flex-col gap-6">
+        <h1 className="text-xl font-semibold text-gray-900">Produtos</h1>
+        <Table columns={catalogColumns} data={catalog} loading={loading} keyExtractor={p => p.id} />
+      </div>
+    )
+  }
+
   const columns: Column<Product>[] = [
     { header: 'Nome', render: p => p.name },
     { header: 'Categoria', render: p => p.categoryName },
@@ -95,7 +141,7 @@ export function ProductsPage() {
       width: '190px',
       render: p => (
         <div className="flex gap-2">
-          {p.status === 'ACTIVE' && (
+          {canAddToCart && p.status === 'ACTIVE' && (
             <Button
               variant="secondary"
               onClick={() => addItem({ id: p.id, name: p.name, price: Number(p.price) })}
@@ -104,8 +150,12 @@ export function ProductsPage() {
               + Carrinho
             </Button>
           )}
-          <Button variant="secondary" onClick={() => openEdit(p)} className="text-xs px-2 py-1">Editar</Button>
-          <Button variant="danger" onClick={() => handleDelete(p)} className="text-xs px-2 py-1">Excluir</Button>
+          {canWrite && (
+            <Button variant="secondary" onClick={() => openEdit(p)} className="text-xs px-2 py-1">Editar</Button>
+          )}
+          {canDelete && (
+            <Button variant="danger" onClick={() => handleDelete(p)} className="text-xs px-2 py-1">Excluir</Button>
+          )}
         </div>
       ),
     },
@@ -116,7 +166,9 @@ export function ProductsPage() {
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold text-gray-900">Produtos</h1>
-          <Button onClick={openCreate}>Novo produto</Button>
+          <AccessGuard permission={{ authorities: [Authority.PRODUCT_WRITE] }}>
+            <Button onClick={openCreate}>Novo produto</Button>
+          </AccessGuard>
         </div>
 
         <div className="flex gap-3">

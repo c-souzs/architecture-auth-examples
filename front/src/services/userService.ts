@@ -1,4 +1,4 @@
-import api from '@/lib/api'
+import { authApi as api } from '@/lib/api'
 import type { Page } from '@/models/pagination'
 import type { UserSummaryResponse, AssignRolesRequest, UserStatusRequest } from '@/models/user-management'
 

@@ -1,20 +1,18 @@
 import { useEffect, useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { useCart } from '@/context/CartContext'
+import { usePermissions } from '@/hooks/usePermissions'
 import { customerService } from '@/services/customerService'
 import { commerceService } from '@/services/commerceService'
+import { Authority } from '@/models/permissions'
 import type { Customer, Address } from '@/models/customer'
 
 interface CartModalProps {
   open: boolean
   onClose: () => void
-}
-
-interface CartErrors {
-  customerId?: string
-  addressId?: string
 }
 
 function formatAddress(a: Address): string {
@@ -24,23 +22,24 @@ function formatAddress(a: Address): string {
 
 export function CartModal({ open, onClose }: CartModalProps) {
   const { items, removeItem, updateQuantity, clearCart } = useCart()
+  const { canAccess } = usePermissions()
+
+  const canWrite = canAccess({ authorities: [Authority.ORDER_WRITE] })
+  const canOwn = canAccess({ authorities: [Authority.ORDER_OWN] })
+
   const [customers, setCustomers] = useState<Customer[]>([])
   const [addresses, setAddresses] = useState<Address[]>([])
   const [customerId, setCustomerId] = useState('')
   const [addressId, setAddressId] = useState('')
   const [saving, setSaving] = useState(false)
-  const [errors, setErrors] = useState<CartErrors>({})
+  const [errors, setErrors] = useState<{ customerId?: string; addressId?: string }>({})
 
   useEffect(() => {
-    if (open) customerService.findAll().then(setCustomers)
-  }, [open])
+    if (open && canWrite) customerService.findAll().then(setCustomers)
+  }, [open, canWrite])
 
   useEffect(() => {
-    if (!customerId) {
-      setAddresses([])
-      setAddressId('')
-      return
-    }
+    if (!customerId) { setAddresses([]); setAddressId(''); return }
     customerService.findAddresses(Number(customerId)).then(data => {
       setAddresses(data)
       setAddressId('')
@@ -50,23 +49,42 @@ export function CartModal({ open, onClose }: CartModalProps) {
   const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0)
 
   async function handleFinalize() {
-    const next: CartErrors = {}
-    if (!customerId) next.customerId = 'Selecione um cliente'
-    if (!addressId) next.addressId = 'Selecione um endereço'
-    setErrors(next)
-    if (Object.keys(next).length > 0) return
+    if (canWrite) {
+      const next: typeof errors = {}
+      if (!customerId) next.customerId = 'Selecione um cliente'
+      if (!addressId) next.addressId = 'Selecione um endereço'
+      setErrors(next)
+      if (Object.keys(next).length > 0) return
 
-    setSaving(true)
-    try {
-      await commerceService.createOrder({
-        customerId: Number(customerId),
-        deliveryAddressId: Number(addressId),
-        items: items.map(i => ({ productId: i.productId, quantity: i.quantity })),
-      })
-      clearCart()
-      handleClose()
-    } finally {
-      setSaving(false)
+      setSaving(true)
+      try {
+        await commerceService.createOrder({
+          customerId: Number(customerId),
+          deliveryAddressId: Number(addressId),
+          items: items.map(i => ({ productId: i.productId, quantity: i.quantity })),
+        })
+        clearCart()
+        handleClose()
+      } finally {
+        setSaving(false)
+      }
+    } else if (canOwn) {
+      const next: typeof errors = {}
+      if (!addressId) next.addressId = 'Informe o ID do endereço'
+      setErrors(next)
+      if (Object.keys(next).length > 0) return
+
+      setSaving(true)
+      try {
+        await commerceService.createMyOrder({
+          deliveryAddressId: Number(addressId),
+          items: items.map(i => ({ productId: i.productId, quantity: i.quantity })),
+        })
+        clearCart()
+        handleClose()
+      } finally {
+        setSaving(false)
+      }
     }
   }
 
@@ -77,6 +95,8 @@ export function CartModal({ open, onClose }: CartModalProps) {
     onClose()
   }
 
+  const canFinalize = canWrite || canOwn
+
   return (
     <Modal
       open={open}
@@ -86,7 +106,7 @@ export function CartModal({ open, onClose }: CartModalProps) {
       footer={
         <>
           <Button variant="secondary" onClick={handleClose}>Fechar</Button>
-          <Button onClick={handleFinalize} disabled={saving || items.length === 0}>
+          <Button onClick={handleFinalize} disabled={saving || items.length === 0 || !canFinalize}>
             {saving ? 'Criando...' : 'Finalizar pedido'}
           </Button>
         </>
@@ -142,31 +162,42 @@ export function CartModal({ open, onClose }: CartModalProps) {
         </>
       )}
 
-      <Select
-        id="cart-customer"
-        label="Cliente"
-        placeholder="Selecione um cliente..."
-        options={customers.map(c => ({ value: String(c.id), label: `${c.userName} (${c.userEmail})` }))}
-        value={customerId}
-        onChange={e => {
-          setCustomerId(e.target.value)
-          setErrors(prev => ({ ...prev, customerId: undefined }))
-        }}
-        error={errors.customerId}
-      />
-      <Select
-        id="cart-address"
-        label="Endereço de entrega"
-        placeholder={customerId ? 'Selecione um endereço...' : 'Selecione um cliente primeiro'}
-        options={addresses.map(a => ({ value: String(a.id), label: formatAddress(a) }))}
-        value={addressId}
-        onChange={e => {
-          setAddressId(e.target.value)
-          setErrors(prev => ({ ...prev, addressId: undefined }))
-        }}
-        disabled={!customerId}
-        error={errors.addressId}
-      />
+      {canWrite && (
+        <>
+          <Select
+            id="cart-customer"
+            label="Cliente"
+            placeholder="Selecione um cliente..."
+            options={customers.map(c => ({ value: String(c.id), label: `Cliente #${c.id} — CPF: ${c.cpf}` }))}
+            value={customerId}
+            onChange={e => { setCustomerId(e.target.value); setErrors(prev => ({ ...prev, customerId: undefined })) }}
+            error={errors.customerId}
+          />
+          <Select
+            id="cart-address"
+            label="Endereço de entrega"
+            placeholder={customerId ? 'Selecione um endereço...' : 'Selecione um cliente primeiro'}
+            options={addresses.map(a => ({ value: String(a.id), label: formatAddress(a) }))}
+            value={addressId}
+            onChange={e => { setAddressId(e.target.value); setErrors(prev => ({ ...prev, addressId: undefined })) }}
+            disabled={!customerId}
+            error={errors.addressId}
+          />
+        </>
+      )}
+
+      {!canWrite && canOwn && (
+        <Input
+          id="cart-address-id"
+          label="ID do endereço de entrega"
+          type="number"
+          min="1"
+          placeholder="Ex: 1"
+          value={addressId}
+          onChange={e => { setAddressId(e.target.value); setErrors(prev => ({ ...prev, addressId: undefined })) }}
+          error={errors.addressId}
+        />
+      )}
     </Modal>
   )
 }

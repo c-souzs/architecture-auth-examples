@@ -18,3 +18,16 @@ export interface User {
   createdAt: string
   roles: Role[]
 }
+
+export interface UserInfo {
+  id: number
+  email: string
+  name: string
+  roles: string[]
+  authorities: string[]
+}
+
+export interface LoginResponse {
+  accessToken: string
+  user: UserInfo
+}

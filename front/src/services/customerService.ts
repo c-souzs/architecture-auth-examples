@@ -1,4 +1,4 @@
-import api from '@/lib/api'
+import { resourceApi as api } from '@/lib/api'
 import type { Customer, Address } from '@/models/customer'
 
 export const customerService = {

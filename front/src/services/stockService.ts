@@ -1,4 +1,4 @@
-import api from '@/lib/api'
+import { resourceApi as api } from '@/lib/api'
 import type { Stock, StockCount, StockStatus } from '@/models/stock'
 
 export const stockService = {
@@ -8,8 +8,11 @@ export const stockService = {
   adjust: (id: number, body: { quantity: number; minQuantity: number }) =>
     api.put<Stock>(`/stocks/${id}/adjust`, body).then(r => r.data),
 
-  validate: (id: number, body: { adjustedQuantity: number }) =>
+  validate: (id: number, body: { resolvedQuantity: number }) =>
     api.put<Stock>(`/stocks/${id}/validate`, body).then(r => r.data),
+
+  findById: (id: number) =>
+    api.get<Stock>(`/stocks/${id}`).then(r => r.data),
 
   findCounts: (stockId: number) =>
     api.get<StockCount[]>(`/stocks/${stockId}/counts`).then(r => r.data),

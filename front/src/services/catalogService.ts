@@ -1,5 +1,5 @@
-import api from '@/lib/api'
-import type { Category, Product, ProductStatus } from '@/models/catalog'
+import { resourceApi as api } from '@/lib/api'
+import type { Category, Product, ProductCatalog, ProductStatus } from '@/models/catalog'
 
 export const catalogService = {
   findAllCategories: () =>
@@ -13,6 +13,9 @@ export const catalogService = {
 
   deleteCategory: (id: number) =>
     api.delete(`/categories/${id}`),
+
+  findCatalogProducts: () =>
+    api.get<ProductCatalog[]>('/products/catalog').then(r => r.data),
 
   findAllProducts: (params?: { categoryId?: number; status?: ProductStatus }) =>
     api.get<Product[]>('/products', { params }).then(r => r.data),

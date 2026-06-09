@@ -52,14 +52,14 @@ export function CustomersPage() {
   }
 
   async function handleDelete(c: Customer) {
-    if (!confirm(`Excluir cliente ${c.userEmail}?`)) return
+    if (!confirm(`Excluir cliente #${c.id}?`)) return
     await customerService.delete(c.id)
     setCustomers(prev => prev.filter(x => x.id !== c.id))
   }
 
   const columns: Column<Customer>[] = [
     { header: 'ID', render: c => c.id, width: '60px' },
-    { header: 'Usuário', render: c => c.userEmail },
+    { header: 'UserId', render: c => c.userId, width: '80px' },
     { header: 'CPF', render: c => c.cpf },
     { header: 'Telefone', render: c => c.phone ?? '—' },
     {
