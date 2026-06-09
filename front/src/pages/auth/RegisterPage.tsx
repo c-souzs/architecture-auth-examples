@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { useAuth } from '@/hooks/useAuth'
+import { resolveRedirect } from '@/router/routeConfig'
 
 export function RegisterPage() {
-  const { register } = useAuth()
+  const { register, isAuthenticated, initializing, user } = useAuth()
   const navigate = useNavigate()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -13,6 +14,9 @@ export function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  if (initializing) return null
+  if (isAuthenticated && user) return <Navigate to={resolveRedirect('/products', user)} replace />
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

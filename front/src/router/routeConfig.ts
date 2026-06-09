@@ -25,16 +25,21 @@ export const appRoutes: RouteConfig[] = [
   },
 ]
 
+function canAccessRoute(route: RouteConfig, user: UserInfo): boolean {
+  if (!route.permission) return true
+  return (
+    (route.permission.authorities?.some(a => user.authorities.includes(a)) ?? false) ||
+    (route.permission.roles?.some(r => user.roles.includes(r)) ?? false)
+  )
+}
+
 export function resolveRedirect(from: string, user: UserInfo): string {
   const known = appRoutes.map(r => r.path)
-  if (!known.includes(from)) return appRoutes[0].path
 
-  const target = appRoutes.find(r => r.path === from)
-  if (!target?.permission) return from
+  if (known.includes(from)) {
+    const target = appRoutes.find(r => r.path === from)!
+    if (canAccessRoute(target, user)) return from
+  }
 
-  const hasAccess =
-    target.permission.authorities?.some(a => user.authorities.includes(a)) ||
-    target.permission.roles?.some(r => user.roles.includes(r))
-
-  return hasAccess ? from : appRoutes[0].path
+  return appRoutes.find(r => canAccessRoute(r, user))?.path ?? '/forbidden'
 }
