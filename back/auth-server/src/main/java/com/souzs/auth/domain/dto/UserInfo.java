@@ -5,8 +5,9 @@ import com.souzs.shared.security.UserPrincipal;
 import java.util.List;
 
 public record UserInfo(
-        Long userId,
+        Long id,
         String email,
+        String name,
         List<String> roles,
         List<String> authorities
 ) {
@@ -14,6 +15,7 @@ public record UserInfo(
         return new UserInfo(
                 principal.userId(),
                 principal.email(),
+                principal.name(),
                 principal.roles(),
                 principal.authorities()
         );

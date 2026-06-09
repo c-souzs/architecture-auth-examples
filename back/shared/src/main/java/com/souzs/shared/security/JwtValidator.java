@@ -27,6 +27,7 @@ public class JwtValidator {
         return new UserPrincipal(
                 Long.parseLong(claims.getSubject()),
                 claims.get("email", String.class),
+                claims.get("name", String.class),
                 extractList(claims, "roles"),
                 extractList(claims, "authorities")
         );

@@ -38,6 +38,7 @@ public class JwtIssuer {
         return Jwts.builder()
                 .subject(user.getId().toString())
                 .claim("email", user.getEmail())
+                .claim("name", user.getName())
                 .claim("roles", roles)
                 .claim("authorities", authorities)
                 .issuedAt(Date.from(now))

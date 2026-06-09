@@ -3,6 +3,7 @@ package com.souzs.auth.domain.service;
 import com.souzs.auth.domain.dto.LoginRequest;
 import com.souzs.auth.domain.dto.LoginResponse;
 import com.souzs.auth.domain.dto.RegisterRequest;
+import com.souzs.auth.domain.dto.UserInfo;
 import com.souzs.auth.domain.entity.User;
 import com.souzs.auth.domain.repository.UserRepository;
 import com.souzs.auth.infrastructure.security.JwtIssuer;
@@ -15,6 +16,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -25,7 +28,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtIssuer jwtIssuer;
 
-    public void register(RegisterRequest request) {
+    public LoginResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.email())) {
             throw new IllegalStateException("Email já em uso");
         }
@@ -33,7 +36,8 @@ public class AuthService {
         user.setEmail(request.email());
         user.setPassword(passwordEncoder.encode(request.password()));
         user.setName(request.name());
-        userRepository.save(user);
+        User saved = userRepository.save(user);
+        return new LoginResponse(jwtIssuer.issue(saved), new UserInfo(saved.getId(), saved.getEmail(), saved.getName(), List.of(), List.of()));
     }
 
     public LoginResponse login(LoginRequest request) {
@@ -48,7 +52,14 @@ public class AuthService {
         User user = userRepository.findByEmailWithRolesAndAuthorities(request.email())
                 .orElseThrow();
 
-        return new LoginResponse(jwtIssuer.issue(user));
+        List<String> roles = user.getRoles().stream().map(r -> r.getName()).toList();
+        List<String> authorities = user.getRoles().stream()
+                .flatMap(r -> r.getAuthorities().stream())
+                .map(a -> a.getName())
+                .distinct()
+                .toList();
+
+        return new LoginResponse(jwtIssuer.issue(user), new UserInfo(user.getId(), user.getEmail(), user.getName(), roles, authorities));
     }
 
     public void logout() {
