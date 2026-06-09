@@ -39,9 +39,7 @@ public class StockCountService {
                 .toList();
     }
 
-    // STOCK_INTERN submete contagem física
-    // Compara com quantidade de referência e atualiza status do estoque
-    public StockCountResponse submit(Long stockId, StockCountRequest request) {
+    public StockCountResponse submit(Long stockId, Long userId, StockCountRequest request) {
         Stock stock = stockRepository.findById(stockId)
                 .orElseThrow(() -> new EntityNotFoundException("Estoque não encontrado: " + stockId));
 
@@ -51,7 +49,7 @@ public class StockCountService {
 
         StockCount count = new StockCount();
         count.setStock(stock);
-        count.setCountedByUserId(request.countedByUserId());
+        count.setCountedByUserId(userId);
         count.setCountedQuantity(request.countedQuantity());
         stockCountRepository.save(count);
 

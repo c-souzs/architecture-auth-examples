@@ -1,5 +1,6 @@
 package com.souzs.resource.domain.catalog.service;
 
+import com.souzs.resource.domain.catalog.dto.ProductCatalogResponse;
 import com.souzs.resource.domain.catalog.dto.ProductRequest;
 import com.souzs.resource.domain.catalog.dto.ProductResponse;
 import com.souzs.resource.domain.catalog.entity.Category;
@@ -21,6 +22,11 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+
+    @Transactional(readOnly = true)
+    public List<ProductCatalogResponse> findCatalog() {
+        return ProductCatalogResponse.fromActive(productRepository.findAllByStatus(ProductStatus.ACTIVE));
+    }
 
     @Transactional(readOnly = true)
     public List<ProductResponse> findAll(Long categoryId, ProductStatus status) {

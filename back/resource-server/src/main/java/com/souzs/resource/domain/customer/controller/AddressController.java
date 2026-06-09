@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,16 +20,19 @@ public class AddressController {
     private final AddressService addressService;
 
     @GetMapping
+    @PreAuthorize("hasAuthority('customer:read')")
     public List<AddressResponse> findAll(@PathVariable Long customerId) {
         return addressService.findAllByCustomer(customerId);
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('customer:read')")
     public AddressResponse findById(@PathVariable Long customerId, @PathVariable Long id) {
         return addressService.findById(customerId, id);
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('customer:write')")
     public ResponseEntity<AddressResponse> create(
             @PathVariable Long customerId,
             @Valid @RequestBody AddressRequest request) {
@@ -36,6 +40,7 @@ public class AddressController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('customer:write')")
     public AddressResponse update(
             @PathVariable Long customerId,
             @PathVariable Long id,
@@ -44,6 +49,7 @@ public class AddressController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('customer:delete')")
     public ResponseEntity<Void> delete(@PathVariable Long customerId, @PathVariable Long id) {
         addressService.delete(customerId, id);
         return ResponseEntity.noContent().build();

@@ -4,6 +4,7 @@ import com.souzs.resource.domain.catalog.entity.Product;
 import com.souzs.resource.domain.catalog.entity.ProductStatus;
 import com.souzs.resource.domain.catalog.repository.ProductRepository;
 import com.souzs.resource.domain.commerce.dto.OrderItemRequest;
+import com.souzs.resource.domain.commerce.dto.OrderOwnRequest;
 import com.souzs.resource.domain.commerce.dto.OrderRequest;
 import com.souzs.resource.domain.commerce.dto.OrderResponse;
 import com.souzs.resource.domain.commerce.entity.*;
@@ -36,6 +37,53 @@ public class OrderService {
     private final CustomerRepository customerRepository;
     private final AddressRepository addressRepository;
     private final ProductRepository productRepository;
+
+    @Transactional(readOnly = true)
+    public List<OrderResponse> findMyOrders(Long userId, OrderStatus status) {
+        if (status != null) {
+            return orderRepository.findAllByCustomer_UserIdAndStatus(userId, status).stream()
+                    .map(OrderResponse::from).toList();
+        }
+        return orderRepository.findAllByCustomer_UserId(userId).stream()
+                .map(OrderResponse::from).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public OrderResponse findMyById(Long userId, Long id) {
+        return orderRepository.findByIdAndCustomer_UserId(id, userId)
+                .map(OrderResponse::from)
+                .orElseThrow(() -> new EntityNotFoundException("Pedido não encontrado: " + id));
+    }
+
+    public OrderResponse createOwn(Long userId, OrderOwnRequest request) {
+        Customer customer = customerRepository.findByUserId(userId)
+                .orElseThrow(() -> new EntityNotFoundException("Customer não encontrado para o usuário: " + userId));
+
+        Address address = addressRepository.findById(request.deliveryAddressId())
+                .orElseThrow(() -> new EntityNotFoundException("Endereço não encontrado: " + request.deliveryAddressId()));
+
+        if (!address.getCustomer().getId().equals(customer.getId())) {
+            throw new IllegalArgumentException("Endereço não pertence ao customer");
+        }
+
+        return OrderResponse.from(buildAndSave(customer, address, request.items()));
+    }
+
+    public OrderResponse cancelOwn(Long userId, Long id) {
+        Order order = orderRepository.findByIdAndCustomer_UserId(id, userId)
+                .orElseThrow(() -> new EntityNotFoundException("Pedido não encontrado: " + id));
+
+        if (!CANCELLABLE.contains(order.getStatus())) {
+            throw new IllegalStateException("Pedido não pode ser cancelado no status: " + order.getStatus());
+        }
+
+        if (order.getStatus() == OrderStatus.PAYMENT_CONFIRMED && order.getPayment() != null) {
+            order.getPayment().setStatus(PaymentStatus.REFUNDED);
+        }
+
+        order.setStatus(OrderStatus.CANCELLED);
+        return OrderResponse.from(order);
+    }
 
     @Transactional(readOnly = true)
     public List<OrderResponse> findAll(Long customerId, OrderStatus status) {
@@ -72,11 +120,15 @@ public class OrderService {
             throw new IllegalArgumentException("Endereço não pertence ao customer informado");
         }
 
+        return OrderResponse.from(buildAndSave(customer, address, request.items()));
+    }
+
+    private Order buildAndSave(Customer customer, Address address, List<OrderItemRequest> itemRequests) {
         Order order = new Order();
         order.setCustomer(customer);
         order.setStatus(OrderStatus.PENDING);
 
-        for (OrderItemRequest itemReq : request.items()) {
+        for (OrderItemRequest itemReq : itemRequests) {
             Product product = productRepository.findById(itemReq.productId())
                     .orElseThrow(() -> new EntityNotFoundException("Produto não encontrado: " + itemReq.productId()));
 
@@ -102,7 +154,7 @@ public class OrderService {
         delivery.setDeliveryAddress(formatAddress(address));
         order.setDelivery(delivery);
 
-        return OrderResponse.from(orderRepository.save(order));
+        return orderRepository.save(order);
     }
 
     public OrderResponse cancel(Long id) {

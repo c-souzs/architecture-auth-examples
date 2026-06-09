@@ -23,7 +23,7 @@ public record OrderResponse(
         return new OrderResponse(
                 order.getId(),
                 order.getCustomer().getId(),
-                order.getCustomer().getUser().getName(),
+                "Customer #" + order.getCustomer().getId(),
                 order.getStatus(),
                 order.getTotalAmount(),
                 order.getCreatedAt(),
