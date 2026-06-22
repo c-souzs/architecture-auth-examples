@@ -43,7 +43,7 @@ public class JwtIssuer {
                 .claim("authorities", authorities)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plusMillis(expirationMs)))
-                .signWith(privateKey)
+                .signWith(privateKey, Jwts.SIG.RS256) // Evita que o tipo do algoritmo seja inferido
                 .compact();
     }
 }
